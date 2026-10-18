@@ -1,0 +1,13 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {describe}=require('../assets/send-feedback.js');
+const result=(statuses,skipped=[])=>({status:'completed',result:{accepted:statuses.filter(s=>s==='accepted_by_smtp').length,failed_or_unknown:statuses.filter(s=>s!=='accepted_by_smtp').length,skipped:skipped.length,results:[...statuses.map((status,i)=>({email:`test${i}@example.com`,status})),...skipped.map(status=>({email:'skip@example.com',status,skipped:true}))]}});
+test('in-progress is never reported as success',()=>{const v=describe({status:'running',progress:{completed:1,total:3}});assert.equal(v.busy,true);assert.equal(v.tone,'progress');assert.match(v.message,/1 of 3/);});
+test('Gmail acceptance is successful submission, not confirmed delivery',()=>{const v=describe(result(['accepted_by_smtp']));assert.equal(v.tone,'success');assert.match(v.message,/1 sent/);assert.match(v.message,/Inbox delivery and read status are not confirmed/);});
+test('partial failure preserves successful recipient count',()=>{const v=describe(result(['accepted_by_smtp','failed_before_submission']));assert.equal(v.tone,'warning');assert.match(v.message,/1 sent · 1 failed/);assert.equal(v.rows[1].label,'Not sent — submission failed');});
+test('unknown result is not marked failed or safe to retry',()=>{const v=describe(result(['unknown']));assert.equal(v.tone,'warning');assert.match(v.message,/0 failed · 1 unconfirmed/);assert.match(v.message,/before retrying/);});
+test('all failures cannot produce a success banner',()=>{const v=describe(result(['rejected']));assert.equal(v.tone,'error');assert.equal(v.title,'Sending failed');});
+test('skipped prior successes are not new successful sends',()=>{const v=describe(result([],['accepted_by_smtp','suppressed']));assert.equal(v.title,'No new emails sent');assert.match(v.message,/0 sent/);assert.match(v.message,/2 skipped/);});
+test('interrupted job without final report never claims no email was sent',()=>{const v=describe({status:'interrupted'});assert.equal(v.tone,'warning');assert.match(v.message,/some messages may have been submitted/);});
+test('malformed empty report does not become success',()=>{const v=describe({status:'completed',result:{}});assert.equal(v.tone,'warning');assert.equal(v.title,'Send result needs review');});
+test('stopped job with some successful sends keeps the sent count',()=>{const j=result(['accepted_by_smtp']);j.status='cancelled';const v=describe(j);assert.equal(v.tone,'warning');assert.match(v.message,/1 sent/);});
