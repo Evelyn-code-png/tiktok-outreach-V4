@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.env
+.env.*
+config.json
+dashboard-session.json
+*.sqlite*
+*.db
+*.log
+backups/
+runs/
+campaigns/
+jobs/
+*.zip
