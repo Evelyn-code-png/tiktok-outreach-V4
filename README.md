@@ -4,7 +4,7 @@ A local workspace for finding TikTok creators with EasyKOL, reviewing contacts, 
 
 ## Download and open
 
-Download the **Outreach V4 ZIP** from [Releases](https://github.com/Evelyn-code-png/tiktok-outreach-V4/releases/latest), then extract the complete folder. You can also use **Code → Download ZIP** on this page.
+Select **Code → Download ZIP** on this private repository page, then extract the complete folder. Each teammate must first have access to the repository.
 
 **Requirement:** Python 3.10 or newer. No additional Python packages or Codex installation are required to open and use the workspace. If Python is not installed, install it once from [python.org](https://www.python.org/downloads/). On Windows, select **Add python.exe to PATH** during installation.
 
@@ -57,7 +57,7 @@ This is a **local application**, not a shared cloud workspace. Each teammate has
 
 Data is stored outside the downloaded source in `~/.config/tiktok-outreach-v3` on macOS/Linux, or the corresponding user-profile location on Windows. The existing `v3` storage name is kept for compatibility with earlier installations. Updating the source does not delete existing local data.
 
-The repository is private. The owner must grant teammates repository access before they can open it or download a release. Do not upload personal settings, contact exports, mail contents, or API keys to this repository.
+The repository is private. The owner must grant teammates repository access before they can open it or download the project. Do not upload personal settings, contact exports, mail contents, or API keys to this repository.
 
 ## Development checks
 

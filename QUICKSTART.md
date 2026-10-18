@@ -1,6 +1,6 @@
 # Outreach V4 — Quick Start
 
-1. Download the ZIP from **Releases**, or select **Code → Download ZIP**. Extract the complete folder.
+1. Select **Code → Download ZIP** on the repository page. Extract the complete folder.
 2. Install **Python 3.10+** if needed. No additional packages or Codex installation are required to open the app.
 3. On Mac, open **Open Dashboard.command**. On Windows, open **Open Dashboard.bat**. Keep the launcher window open.
 4. The launcher opens the local workspace in your browser. Use that opened page, not `assets/index.html`.
@@ -25,4 +25,4 @@ In **Delivery log**, click **Enable reply tracking**, review the mailbox permiss
 
 ## Team use
 
-The repository and releases are private, so each teammate needs repository access. Each download runs on that teammate's computer with their own credentials and separate local data. It does not use the project owner's API keys or mailbox.
+The repository is private, so each teammate needs repository access. Each download runs on that teammate's computer with their own credentials and separate local data. It does not use the project owner's API keys or mailbox.
