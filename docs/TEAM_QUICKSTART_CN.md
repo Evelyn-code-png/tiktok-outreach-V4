@@ -15,16 +15,16 @@
 
 ## 管理员部署 AI
 
-仓库中的 `Dockerfile.ai` 只复制网关脚本，不包含本机配置、Gmail 令牌或 API key。`render.yaml` 提供一个 Starter 服务和 1 GB 持久化磁盘的部署配置，**这是付费配置**，开通前在 Render 页面核对价格。只需 Hobby 工作区，不需要升级 Pro 工作区。
+仓库中的 `Dockerfile.ai` 只复制网关脚本，不包含本机配置、Gmail 令牌或 API key。`render.yaml` 按管理员选择提供 Free 服务，无持久化磁盘。只需 Hobby 工作区，不需要升级 Pro 工作区。免费实例闲置后会休眠，重启会清空每日调用计数；OpenAI 调用仍消耗已充值余额。
 
 在 Render 连接你有权限的 Git 仓库及包含这些修改的分支，以 Blueprint 部署。秘密环境变量：
 
 - `OPENAI_API_KEY`：团队管理员的有效 key，仅存在 Render 秘密配置。
 - `OPENAI_MODEL`：已验证可用的模型名称。
 - `AI_GATEWAY_TOKENS`：每名成员一个随机访问码，以逗号分隔。每个码建议使用 `secrets.token_urlsafe(32)` 生成。
-- 默认每个访问码每天 50 次请求，失败的上游请求也计数；可调整 `AI_DAILY_REQUEST_LIMIT`。这不是美元预算上限。
+- 默认每个访问码每天 20 次请求，失败的上游请求也计数；可调整 `AI_DAILY_REQUEST_LIMIT`。这不是美元预算上限。
 
-部署后 `/healthz` 应返回 `{"status":"ok"}`，但还需要带访问码真实生成测试才能确认 OpenAI 连接。测试完成后才向组员发放 HTTPS 服务地址。Render 免费服务不能保存本项目的 SQLite 额度账本，重启会重置计数，而且闲置会休眠；当前配置选择持久化磁盘，避免把免费临时磁盘当作可靠额度控制。
+部署后 `/healthz` 应返回 `{"status":"ok"}`，但还需要带访问码真实生成测试才能确认 OpenAI 连接。测试完成后才向组员发放 HTTPS 服务地址。Render 免费服务不能保存本项目的 SQLite 额度账本，重启会重置计数，而且闲置会休眠；当前配置经管理员确认采用免费临时磁盘，调用计数仅作为轻量限制，不保证跨重启的每日限额。
 
 每位组员的连接文件结构如下（占位值不能直接使用）：
 
