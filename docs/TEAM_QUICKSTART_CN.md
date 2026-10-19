@@ -1,10 +1,10 @@
 # 组员 pull 后如何使用完整功能
 
-本项目仍在每个人自己的电脑运行。团队仅托管 AI 网关：OpenAI key 留在网关，Gmail 授权和联系人留在各自电脑。当前部署文件已经准备好，但管理员尚未创建云服务；拿到真实团队连接文件前，不能把本机 AI 地址当作远程服务使用。
+本项目仍在每个人自己的电脑运行。团队仅托管 AI 网关：OpenAI key 留在网关，Gmail 授权和联系人留在各自电脑。团队 AI 已部署至 `https://outreach-team-ai.onrender.com`（Render Free）。组员仍需管理员私下分发的独立访问码；无需个人 OpenAI key。
 
 ## 组员操作
 
-1. 拉取包含团队接入功能的版本，安装 Python 3.10+。
+1. 拉取 `codex/simplify-connections` 分支（尚未合并 main），安装 Python 3.10+。已有副本运行 `git fetch origin`、`git switch codex/simplify-connections`、`git pull`。
 2. 从管理员私下领取分配给你的 `team-connection.json`，放在项目根目录。不要提交这个文件；其中的访问码会消耗团队 AI 额度。
 3. 双击 `Setup Team.command`（Mac）或 `Setup Team.bat`（Windows）；Linux 运行 `python3 scripts/team_setup.py`。这会把团队 Google 客户端、AI URL 和成员访问码写入本机私有配置目录，不会导入管理员的 Gmail 授权或 OpenAI key。
 4. 双击 `Open Dashboard.command` / `.bat`。在 Account Setup 点击 Connect Google，选择已加入测试名单的**自己的邮箱**；要看回复则勾选回复权限。
@@ -43,4 +43,8 @@ Google 配置必须使用团队 Desktop 客户端；原始下载 JSON 的 `insta
 
 ## 当前验证范围
 
-本机 Google 连接和真实 AI 生成已通过。新增团队导入流程在隔离目录测试，部署文件尚未在 Render 实际构建运行。完成云端部署、分发配置后，还需由至少一名组员在第二台电脑验证搜索、AI 和自己的 Google 连接，才能确认完整交付。
+2026-10-19：Render Free 已成功构建并运行。用全新隔离用户目录安装组员配置，在没有个人 OpenAI key 的情况下，云端匹配分析与三个邮件开场段落均生成成功；共享 EasyKOL 凭据通过额度查询。五个独立访问码均通过认证检查，无访问码的请求被拒绝。四个组员邮箱已加入 Google 测试名单。尚未在组员实际电脑完成端到端检索、个人 Gmail 授权及邮件投递测试。
+
+免费实例冷启动可能超过 50 秒。录制前先打开 https://outreach-team-ai.onrender.com/healthz ，等出现 `status: ok` 再调用 AI。不要快速重复点击生成，以免产生重复用量。
+
+部署仓库为私有的 `Xiaoyi-Kuang1/outreach-team-ai`，只保存网关脚本与部署配置；组员应用仍在原仓库。Google Gmail 授权及回复内容不经过 AI 网关。

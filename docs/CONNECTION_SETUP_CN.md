@@ -68,3 +68,7 @@ node --test tests/test_send_feedback.cjs
 ## 本机 AI 联调结果（2026-10-19，充值后）
 
 充值后，通过已配置的本机网关调用应用的 `creator_fit.call_model` 与 `personalization.call_ai` 均成功。测试使用明确虚构的 Demo Creator / Demo Reuse 资料；匹配分析通过字段引用校验，邮件生成返回三个开场段落并通过引用 URL 校验。未发送邮件，也未将测试联系人写入工作区。此前的余额不足已解除；可用额度仍取决于 API 账户余额。
+
+## 团队远程 AI 已接通（2026-10-19）
+
+按管理员选择部署 Render Free，无持久化磁盘，免费实例休眠及计数重置限制已接受。本机已切换到云端服务，不再需要启动 Open Local AI.command。组员操作与验证范围见 [团队指南](TEAM_QUICKSTART_CN.md)。原有本机网关启动器仍保留供离线开发配置使用，启动它会把这台电脑切回本机网关。
