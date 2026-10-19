@@ -208,7 +208,7 @@ def start_job(kind, data):
         campaign = o.load_campaign(location('campaigns', cid + '.json'))
         if data.get('execute') is not True: raise ValueError('Sending requires explicit confirmation')
         if not 1 <= int(data.get('max_messages', 20)) <= 500: raise ValueError('The batch size must be 1-500 messages')
-        if not o.doctor(NS(online=False))['gmail_configured']: raise ValueError('SMTP is not configured; Codex can use the signed-in Gmail browser instead')
+        if not o.doctor(NS(online=False))['gmail_configured']: raise ValueError('Connect Google or configure SMTP in Account Setup first')
     if kind == 'emails': get_run(data.get('run_id'))
     if kind == 'emails-resume':
         old = get_job(data.get('source_job_id'))

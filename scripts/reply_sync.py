@@ -1,4 +1,7 @@
 """Consent-gated, read-only Gmail reply matching. No mail sending or AI calls."""
+import base64
+import urllib.parse
+import google_mail
 import email
 from email import policy
 from email.parser import BytesParser
@@ -27,6 +30,9 @@ MAX_MESSAGE_BYTES = 1_000_000
 def credentials():
     cfg = o.load_config()
     account = cfg.get('sender', '').strip().lower()
+    if cfg.get('mail_transport') == 'google':
+        return account, google_mail.load().get('connection_id', '') if google_mail.connected(google_mail.READ) else ''
+    if cfg.get('mail_transport') == 'disconnected': return account, ''
     password = os.environ.get('GMAIL_APP_PASSWORD') or cfg.get('gmail_app_password', '')
     return account, password.replace(' ', '')
 
@@ -68,7 +74,7 @@ def consent(data):
         raise ValueError('Review the current reply tracking permission first')
     account, password = credentials()
     if data['allow'] and not (account and password):
-        raise ValueError('Set up your sending Gmail and Gmail app password in Account Setup first')
+        raise ValueError('Connect Google with reply access, or configure a Gmail app password in Account Setup first')
     with STATE_LOCK:
         state = load()
         if state.get('identity') != identity(): state = {}
@@ -88,7 +94,7 @@ def sent_messages():
     account, _ = credentials()
     if not (o.ROOT/'outreach.sqlite').exists(): return [], 0
     with o.db_open() as db:
-        rows = db.execute("SELECT campaign,email,message_id,updated FROM deliveries WHERE status IN ('accepted_by_smtp','sent_browser') ORDER BY updated DESC").fetchall()
+        rows = db.execute("SELECT campaign,email,message_id,updated FROM deliveries WHERE status IN ('accepted_by_smtp','accepted_by_gmail_api','sent_browser') ORDER BY updated DESC").fetchall()
     result, missing = [], 0
     for cid, recipient, mid, stamp in rows:
         path = w.location('campaigns', cid+'.json')
@@ -200,6 +206,8 @@ def sync_once():
     # Keep scans bounded and report when older messages need another view/workspace.
     result['older_messages_not_scanned']=max(0,len(originals)-300)
     originals=originals[:300];result['checked_messages']=len(originals); index={row['message_id']:row for row in originals}
+    if o.load_config().get('mail_transport') == 'google':
+        return sync_google(originals, index, expected, result)
     account, password=credentials(); client=None; candidates=set()
     try:
         require_consent(expected)
@@ -282,3 +290,53 @@ def start_sync():
             state=load();state['last_error']='';o.save_json(o.ROOT/'reply-sync.json',state)
             threading.Thread(target=_worker,daemon=True).start()
     return status()
+
+
+def sync_google(originals, index, expected, result):
+    """Search by correspondent/date; verify exact RFC Message-ID before reading body."""
+    candidates = set()
+    for row in originals:
+        page = None
+        while True:
+            require_consent(expected)
+            params = {'q': 'from:'+row['email']+' after:'+str(max(0,int(row['sent_at'])-86400)),
+                      'maxResults': 100, 'includeSpamTrash': 'true'}
+            if page: params['pageToken'] = page
+            response = google_mail.api('messages?'+urllib.parse.urlencode(params))
+            candidates.update(item['id'] for item in response.get('messages', []))
+            if len(candidates)>1000: raise ValueError('Too many related messages for one scan. Narrow the campaign before syncing.')
+            page = response.get('nextPageToken')
+            if not page: break
+    result['coverage'] = 'Gmail including spam and trash; exact reply references only'
+    for mid in candidates:
+        require_consent(expected)
+        path = 'messages/'+urllib.parse.quote(mid, safe='')
+        meta = google_mail.api(path+'?format=metadata')
+        message = email.message.EmailMessage(policy=policy.default)
+        for header in meta.get('payload', {}).get('headers', []):
+            if header['name'].lower() in ('from','in-reply-to','references','message-id','date','subject','auto-submitted','precedence','content-type'):
+                message[header['name']] = header['value']
+        original = match_reply(message, index)
+        if not original: continue
+        dedup = hashlib.sha256((credentials()[0]+'|'+str(message.get('Message-ID','')).strip()).encode()).hexdigest()
+        with STATE_LOCK:
+            if dedup in load().get('seen', []): continue
+        if meta.get('sizeEstimate', MAX_MESSAGE_BYTES+1)>MAX_MESSAGE_BYTES:
+            body = 'Reply received. This message is too large to preview; open Gmail to read it.'
+        else:
+            require_consent(expected)
+            raw = google_mail.api(path+'?format=raw').get('raw', '')
+            if len(raw)>MAX_MESSAGE_BYTES*2: raise ValueError('The reply is too large to preview.')
+            decoded = base64.urlsafe_b64decode(raw+'='*(-len(raw)%4))
+            if len(decoded)>MAX_MESSAGE_BYTES: raise ValueError('The reply is too large to preview.')
+            message = BytesParser(policy=policy.default).parsebytes(decoded)
+            if not match_reply(message,index): continue
+            body = reply_text(message)
+        with STATE_LOCK:
+            require_consent(expected)
+            added,human = import_reply(original,message,body)
+            state = load(); state['seen'] = sorted(set(state.get('seen', [])) | {dedup}); o.save_json(o.ROOT/'reply-sync.json',state)
+        if added:
+            result['new_replies'] += 1
+            result['human_replies' if human else 'automatic_replies'] += 1
+    return result

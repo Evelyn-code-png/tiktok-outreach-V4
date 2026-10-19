@@ -9,7 +9,7 @@ const PAGE_SIZE=100;
 function notice(message,error=false){$('notice').textContent=message;$('notice').className=error?'error':'';}
 async function api(path,data){const r=await fetch(path,{method:data===undefined?'GET':'POST',headers:{'X-Outreach-Token':token,'Content-Type':'application/json'},body:data===undefined?undefined:JSON.stringify(data)});const result=await r.json();if(!r.ok){const e=new Error(result.error||'Request failed');e.httpStatus=r.status;throw e;}return result;}
 let smtpConfigured=false,smtpFeedbackCampaign=null;
-async function refreshStatus(){const d=await api('/api/status');smtpConfigured=d.gmail_configured;$('sender').value=d.sender||'';$('easykol_email').value=d.easykol_email||d.sender||'';$('easy-status').textContent=d.easykol_configured?'Configured · ready to search':'Not configured';$('gmail-status').textContent=d.gmail_configured?'Browser / SMTP modes':'Browser mode · no extra password';$('ai-status').textContent=d.ai_configured?'Configured · ready to write':'Not configured';$('tracking-note').textContent=d.tracking_configured?'Open tracking URL saved. Gmail reply tracking is controlled separately below.':'Open tracking is not configured. Enable Gmail reply tracking above to sync replies.';}
+async function refreshStatus(){const d=await api('/api/status');smtpConfigured=d.gmail_configured;$('sender').value=d.sender||'';$('easykol_email').value=d.easykol_email||d.sender||'';$('easy-status').textContent=d.easykol_configured?'Configured · ready to search':'Not configured';$('gmail-status').textContent=d.google?.connected?'Google connected':d.gmail_configured?'SMTP configured':'Not connected';$('ai_gateway_url').value=d.ai_gateway_url||'';$('google-connect').disabled=!d.google?.available;if(d.google?.connected)$('google-read').checked=!!d.google.read_connected;$('google-disconnect').hidden=!d.google?.has_connection;$('google-status').textContent=d.google?.connected?'Connected: '+d.google.account+(d.google.read_connected?' · Reply access granted':' · Sending only'):d.google?.available?'Ready to connect. Choose whether to include reply access.':'Your team administrator has not enabled Google connection yet.';$('ai-status').textContent=d.ai_configured?'Configured · availability depends on provider quota':'Not configured';$('tracking-note').textContent=d.tracking_configured?'Open tracking URL saved. Gmail reply tracking is controlled separately below.':'Open tracking is not configured. Enable Gmail reply tracking above to sync replies.';}
 function localFeedback(origin,message,error=true){
  let container=origin?.closest('form')||origin?.closest('.actions')||origin?.parentElement;
  if(!container||container.closest('section[hidden]'))container=document.querySelector('main>section:not([hidden])');
@@ -197,7 +197,7 @@ async function watchJob(id){
  else notice(job.error||'task stopped; completed results were preserved',true);
  return job;
 }
-$('config-form').onsubmit=e=>{e.preventDefault();action(e.submitter,async()=>{const data={};for(const id of['sender','easykol_email','easykol_key','gmail_app_password','tracking_base_url','openai_key','openai_model'])data[id]=$(id).value;const r=await api('/api/config',data);$('easykol_key').value='';$('gmail_app_password').value='';$('openai_key').value='';notice(r.message);await refreshStatus();});};
+$('config-form').onsubmit=e=>{e.preventDefault();action(e.submitter,async()=>{const data={};for(const id of['sender','easykol_email','easykol_key','gmail_app_password','tracking_base_url','openai_key','openai_model','ai_gateway_url','ai_gateway_token'])data[id]=$(id).value;const r=await api('/api/config',data);$('easykol_key').value='';$('gmail_app_password').value='';$('openai_key').value='';$('ai_gateway_token').value='';notice(r.message);await refreshStatus();});};
 $('quota').onclick=e=>action(e.target,async()=>{const r=await api('/api/quota',{});$('quota-result').hidden=false;$('quota-result').textContent=`Remaining: ${r.remaining}  Total: ${r.total}  Used today: ${r.dailyUsed}`;notice('EasyKOL connection verified');});
 function validateSearch(){
  const form=$('search-form'),summary=$('search-validation');summary.hidden=true;
@@ -260,7 +260,7 @@ $('send-smtp').onclick=e=>action(e.target,async()=>{
   notice(error.message,true);
  }
 });
-const STATUS_LABELS={accepted_by_smtp:'Sent — accepted by Gmail',sent_browser:'Gmail reported success',sending:'Submitting / review required',sending_browser:'Browser submitting / review required',unknown:'Result uncertain',rejected:'Rejected by server',failed_before_submission:'Failed before submission'};
+const STATUS_LABELS={accepted_by_gmail_api:'Sent — accepted by Gmail API',accepted_by_smtp:'Sent — accepted by Gmail',sent_browser:'Gmail reported success',sending:'Submitting / review required',sending_browser:'Browser submitting / review required',unknown:'Result uncertain',rejected:'Rejected by server',failed_before_submission:'Failed before submission'};
 let historyOffset=0;
 async function refreshMetrics(){const d=await api('/api/metrics');$('metric-sent').textContent=d.sent;$('metric-open').textContent=d.tracked?d.open_rate+'%':'Not enabled';$('metric-reply').textContent=d.reply_tracking_enabled?d.reply_rate+'%':'Not connected';$('metric-click').textContent=d.tracked?d.click_rate+'%':'Not enabled';}
 async function refreshHistory(){
@@ -393,3 +393,8 @@ refreshJobs().catch(e=>notice(e.message,true));
  window.addEventListener('hashchange',showPage);
  showPage();
 })();
+
+let googleConnectionPending=false;
+$('google-connect').onclick=()=>{const tab=window.open('about:blank','_blank');if(tab)tab.opener=null;action($('google-connect'),async()=>{try{const r=await api('/api/google/connect',{read:$('google-read').checked});if(tab){googleConnectionPending=true;tab.location=r.url;}else notice('Allow popups and click Connect Google again.');}catch(e){if(tab)tab.close();throw e;}});};
+$('google-disconnect').onclick=()=>action($('google-disconnect'),async()=>{await api('/api/google/disconnect',{});await refreshStatus();notice('Google disconnected locally. Imported replies are preserved.');});
+window.addEventListener('focus',()=>{if(googleConnectionPending){googleConnectionPending=false;refreshStatus().catch(()=>{});}});

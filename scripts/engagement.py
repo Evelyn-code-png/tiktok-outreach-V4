@@ -217,7 +217,7 @@ def snapshot(run_id=None):
             record['delivery'] = latest.get(record.get('email', '').lower())
             record['followup_blocked'] = stop_reason(record, replied, suppressed)
             # Existing delivery history informs the suggested stage, never invents a sent event.
-            if key not in state['records'] and record['delivery'] and record['delivery']['status'] in ('accepted_by_smtp', 'sent_browser'):
+            if key not in state['records'] and record['delivery'] and record['delivery']['status'] in ('accepted_by_smtp', 'accepted_by_gmail_api', 'sent_browser'):
                 record['stage'] = 'contacted'
             if key not in state['records'] and record.get('email', '').lower() in replied:
                 record['stage'] = 'replied'

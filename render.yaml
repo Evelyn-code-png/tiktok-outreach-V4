@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: outreach-team-ai
+    runtime: docker
+    dockerfilePath: ./Dockerfile.ai
+    plan: starter
+    healthCheckPath: /healthz
+    disk:
+      name: ai-usage
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      - key: AI_GATEWAY_TOKENS
+        sync: false
+      - key: AI_DAILY_REQUEST_LIMIT
+        value: '50'
+      - key: AI_GATEWAY_DB
+        value: /var/data/usage.sqlite

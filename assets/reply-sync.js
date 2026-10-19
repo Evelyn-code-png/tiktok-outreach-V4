@@ -9,7 +9,7 @@
   $('reply-sync-connect').textContent=s.configured?'Enable reply tracking':'Set up Gmail first';
   $('reply-sync-panel').dataset.error=String(!!s.last_error);
   $('reply-sync-badge').textContent=s.syncing?'Syncing':s.authorized?s.last_error?'Needs attention':s.last_checked?(s.last_result?.checked_messages?'Connected':'Ready'):'Allowed':'Not connected';
-  $('reply-sync-status').textContent=s.syncing?'Checking Gmail for related replies…':s.last_error||(!s.configured?'Set up your sending Gmail and Gmail app password in Account Setup.':!s.authorized?'Your permission is needed before this demo reads related replies.':s.last_checked?'Reply tracking is on. Replies are checked automatically while this page is open.':'Permission saved. Ready to sync replies.');
+  $('reply-sync-status').textContent=s.syncing?'Checking Gmail for related replies…':s.last_error||(!s.configured?'Connect Google with reply access in Account Setup, or configure SMTP.':!s.authorized?'Your permission is needed before this demo reads related replies.':s.last_checked?'Reply tracking is on. Replies are checked automatically while this page is open.':'Permission saved. Ready to sync replies.');
   const r=s.last_result;
   $('reply-sync-detail').textContent=r?'Last checked: '+new Date(s.last_checked*1000).toLocaleString()+' · '+r.new_replies+' new replies ('+r.human_replies+' human, '+r.automatic_replies+' automatic) · '+r.coverage+(r.missing_message_ids?' · '+r.missing_message_ids+' sent messages cannot be matched automatically because their message IDs are missing.':'')+(r.older_messages_not_scanned?' · Only the latest 300 sent messages were checked.':''):'Reply text stays on this computer. No AI API is used for syncing.';
  }
@@ -22,7 +22,7 @@
   if(s.prompt_needed&&!automaticPromptShown){automaticPromptShown=true;openPermission();}
   schedule(60000,true);
  }
- function openPermission(){if(!state?.configured){location.hash='settings';notice('Set up your sending Gmail and Gmail app password first.');return;}$('reply-consent-account').textContent=state.account;$('reply-consent-error').textContent='';if(!dialog.open)dialog.showModal();}
+ function openPermission(){if(!state?.configured){location.hash='settings';notice('Connect Google with reply access in Account Setup first.');return;}$('reply-consent-account').textContent=state.account;$('reply-consent-error').textContent='';if(!dialog.open)dialog.showModal();}
  async function synchronize(){
   if(busy||!state?.authorized)return;busy=true;render({...state,syncing:true});
   try{render(await api('/api/mail/sync',{}));schedule(1500);}catch(error){$('reply-sync-status').textContent=error.message;$('reply-sync-panel').dataset.error='true';schedule(60000,true);}finally{busy=false;$('reply-sync-now').disabled=!state?.authorized||!!state?.syncing;}

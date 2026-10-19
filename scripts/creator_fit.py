@@ -1,4 +1,5 @@
 """Grounded AI creator fit, using saved brand briefs and EasyKOL profile facts."""
+import ai_connection
 import hashlib
 import json
 import os
@@ -21,9 +22,7 @@ PROFILE_FIELDS = ('description', 'one_line_pitch', 'ai_tags', 'followers', 'regi
 
 
 def configuration():
-    cfg = o.load_config()
-    return (os.environ.get('OPENAI_API_KEY') or cfg.get('openai_key'),
-            os.environ.get('OPENAI_MODEL') or cfg.get('openai_model'))
+    return ai_connection.configuration()[:2]
 
 
 def load_cache():
@@ -138,7 +137,7 @@ def call_model(creator, brand):
         'If supplied facts conflict with the brand, report the conflict rather than forcing a positive fit.'),
         'input': json.dumps(source, ensure_ascii=False),
         'text': {'format': {'type': 'json_schema', 'name': 'creator_brand_fit', 'strict': True, 'schema': schema}}}
-    request = urllib.request.Request('https://api.openai.com/v1/responses', method='POST',
+    request = urllib.request.Request(ai_connection.configuration()[2], method='POST',
         data=json.dumps(payload).encode(), headers={'Authorization': 'Bearer '+key, 'Content-Type': 'application/json'})
     try:
         with urllib.request.urlopen(request, timeout=60) as response:

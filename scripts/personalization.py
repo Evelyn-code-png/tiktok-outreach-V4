@@ -1,4 +1,5 @@
 """Grounded creator-email personalization for the local workspace."""
+import ai_connection
 import json
 import os
 import urllib.error
@@ -135,8 +136,7 @@ def _response_text(result):
 
 def call_ai(creator, videos, brand):
     cfg = o.load_config()
-    api_key = os.environ.get('OPENAI_API_KEY') or cfg.get('openai_key')
-    model = os.environ.get('OPENAI_MODEL') or cfg.get('openai_model')
+    api_key, model, endpoint = ai_connection.configuration()
     if not api_key or not model:
         raise ValueError('No AI API key and model are configured; you can still edit the email manually')
 
@@ -165,7 +165,7 @@ def call_ai(creator, videos, brand):
         'input': json.dumps(source, ensure_ascii=False),
         'text': {'format': {'type': 'json_schema', 'name': 'creator_personalization',
                             'strict': True, 'schema': schema}}}
-    request = urllib.request.Request('https://api.openai.com/v1/responses',
+    request = urllib.request.Request(endpoint,
         data=json.dumps(payload).encode('utf-8'), method='POST',
         headers={'Authorization': 'Bearer ' + api_key, 'Content-Type': 'application/json'})
     try:
@@ -196,8 +196,7 @@ def personalize(creator, data):
     if not creator:
         raise ValueError('The creator selected for personalization could not be found')
     cfg = o.load_config()
-    if not ((os.environ.get('OPENAI_API_KEY') or cfg.get('openai_key'))
-            and (os.environ.get('OPENAI_MODEL') or cfg.get('openai_model'))):
+    if not all(ai_connection.configuration()[:2]):
         raise ValueError('No AI API key and model are configured; you can still edit the email manually')
     creator = {**creator, **fetch_kol_details(creator.get('profile_url'))}
     supplied = str(data.get('recent_videos', '')).strip()

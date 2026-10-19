@@ -13,3 +13,9 @@ runs/
 campaigns/
 jobs/
 *.zip
+
+# Local connection configuration and tokens
+google-client.json
+google-token.json
+team-connection*.json
+.env

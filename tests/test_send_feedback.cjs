@@ -11,3 +11,5 @@ test('skipped prior successes are not new successful sends',()=>{const v=describ
 test('interrupted job without final report never claims no email was sent',()=>{const v=describe({status:'interrupted'});assert.equal(v.tone,'warning');assert.match(v.message,/some messages may have been submitted/);});
 test('malformed empty report does not become success',()=>{const v=describe({status:'completed',result:{}});assert.equal(v.tone,'warning');assert.equal(v.title,'Send result needs review');});
 test('stopped job with some successful sends keeps the sent count',()=>{const j=result(['accepted_by_smtp']);j.status='cancelled';const v=describe(j);assert.equal(v.tone,'warning');assert.match(v.message,/1 sent/);});
+
+test('Google API success is recognized without SMTP',()=>{const v=describe({status:'completed',result:{results:[{email:'a@example.com',status:'accepted_by_gmail_api'}]}});assert.equal(v.tone,'success');assert.match(v.message,/1 sent/);});
