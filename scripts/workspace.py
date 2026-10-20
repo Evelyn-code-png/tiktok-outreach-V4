@@ -50,6 +50,8 @@ def get_run(run_id):
     if not (p / 'creators.csv').exists(): raise ValueError('The contact list does not exist')
     result = summarize_run(p)
     result['contacts'] = o.csv_read(p / 'creators.csv')
+    import creator_photos
+    creator_photos.enrich(result['contacts'], p)
     return result
 
 def add_contact(data):
