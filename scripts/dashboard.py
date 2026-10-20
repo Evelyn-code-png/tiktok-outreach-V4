@@ -18,6 +18,7 @@ import base64
 import outreach as o
 import workspace as w
 import engagement as engagement
+import creator_photos
 import creator_fit
 import reply_sync
 import google_mail
@@ -46,7 +47,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('Referrer-Policy', 'no-referrer')
-        self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+        self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: https:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
         self.end_headers()
         self.wfile.write(payload)
 
@@ -96,7 +97,7 @@ class Handler(BaseHTTPRequestHandler):
                             o.record_tracking(cid,m['to'],'click'); self.send_response(302);self.send_header('Location',target);self.end_headers();return
                 except Exception: pass
             return self.respond(404,{'error':'tracking link invalid'})
-        if path in ('/engagement.js', '/engagement.css', '/send-feedback.js', '/reply-sync.js'):
+        if path in ('/glass.css', '/engagement.js', '/engagement.css', '/send-feedback.js', '/reply-sync.js'):
             mime = 'text/javascript; charset=utf-8' if path.endswith('.js') else 'text/css; charset=utf-8'
             return self.respond(200, (ASSETS / path[1:]).read_bytes(), mime)
         if path in ('/', '/app.js', '/app.css', '/after-state.js', '/team-meeting-collaboration.svg', '/single-user-workspace.png',
@@ -233,6 +234,7 @@ class Handler(BaseHTTPRequestHandler):
                     o.private_dir()
                     o.save_json(o.ROOT / 'config.json', cfg)
                 return self.respond(200, {'message': 'Settings saved locally; keys are never returned to the page'})
+            if path == '/api/creator-photo': return self.respond(200, creator_photos.resolve(data))
             if path == '/api/creator-fit': return self.respond(200, creator_fit.generate(data))
             if path == '/api/brand-brief': return self.respond(200, engagement.save_brand(data))
             if path == '/api/brand-context': return self.respond(200, engagement.set_context(data))

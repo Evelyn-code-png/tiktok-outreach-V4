@@ -35,9 +35,29 @@ function formatFollowers(value){if(value==null||String(value).trim()==='')return
 function englishLabel(value){return String(value||'').replaceAll('易拓客邮箱查询','EasyKOL email lookup').replaceAll('邮箱补全','Email enrichment').replaceAll('CSV 导入','CSV import').replaceAll('Excel 导入','Excel import').replaceAll('组搜索','searches').replaceAll('缺少 EasyKOL API Key 或绑定邮箱；请先运行 setup','The EasyKOL API key or account email is missing; run setup first');}
 function creatorNameNode(r){const node=element('button',r.name||r.username||'Unnamed creator','crm-creator-name');node.type='button';node.setAttribute('aria-label','Open creator details for '+node.textContent);node.onclick=()=>window.OutreachEngagement?.open(r,node);return node;}
 function contactCheckbox(r){const c=element('input');c.type='checkbox';c.disabled=!r.email;c.checked=!!r.email&&selected.has(r.email);c.setAttribute('aria-label',`Select ${r.name||r.username||r.email||'creator'}`);c.dataset.email=r.email||'';c.onchange=()=>{c.checked?selected.add(r.email):selected.delete(r.email);selectionCount();renderContacts();};return c;}
+function creatorPhoto(r){
+ const wrap=element('div',undefined,'creator-photo-wrap'),fallback=Array.from(String(r.name||r.username||'?').trim())[0]||'?';
+ const circle=element('div',fallback,'creator-avatar');wrap.append(circle);
+ let load;
+ function show(url){
+  try{if(new URL(url).protocol!=='https:')return false;}catch{return false;}
+  const img=new Image();img.alt=(r.name||r.username||'Creator')+' profile photo';img.loading='lazy';img.referrerPolicy='no-referrer';img.decoding='async';
+  img.onload=()=>{circle.classList.add('has-photo');if(load)load.hidden=true;};
+  img.onerror=()=>{img.remove();circle.classList.remove('has-photo');if(load){load.hidden=false;load.textContent='Retry photo';}};
+  circle.append(img);img.src=url;return true;
+ }
+ if(r.profile_url){
+  load=element('button','Load photo','photo-load');load.type='button';load.title='Fetch this creator’s photo from EasyKOL. Provider usage may apply; successful lookups are cached locally.';
+  load.setAttribute('aria-label','Load profile photo for '+(r.name||r.username||'creator'));
+  load.onclick=async()=>{if(!confirm('Load this profile photo from EasyKOL? This may use your team’s provider quota. Successful lookups are cached for 7 days.'))return;
+   load.disabled=true;load.textContent='Loading…';try{const d=await api('/api/creator-photo',{run_id:activeRun.id,profile_url:r.profile_url});if(d.avatar_url){r.avatar_url=d.avatar_url;show(d.avatar_url);}else{load.textContent='No photo';load.title='The provider did not return a photo for this creator.';}}catch(e){load.textContent='Retry photo';notice(e.message,true);}finally{load.disabled=false;}
+  };wrap.append(load);
+ }
+ if(r.avatar_url){if(load)load.hidden=true;show(r.avatar_url);}return wrap;
+}
 function creatorCard(r){
  const card=element('article',undefined,'creator-card'+(r.email&&selected.has(r.email)?' selected':''));
- const top=element('div',undefined,'creator-card-top'),avatar=element('div',Array.from(String(r.name||r.username||'?').trim())[0]||'?','creator-avatar'),identity=element('div',undefined,'creator-identity');
+ const top=element('div',undefined,'creator-card-top'),avatar=creatorPhoto(r),identity=element('div',undefined,'creator-identity');
  identity.append(creatorNameNode(r),element('span',r.username?`@${String(r.username).replace(/^@/,'')}`:r.source==='Manual'?'Email contact':'TikTok creator','creator-username'));
  const choose=element('label',undefined,'card-select'),box=contactCheckbox(r),chooseText=element('span',r.email?'Select':'No email');choose.append(box,chooseText);top.append(avatar,identity,choose);
  const stats=element('div',undefined,'creator-stats'),followers=element('div'),region=element('div');followers.append(element('strong',formatFollowers(r.followers)),element('span','Followers'));region.append(element('strong',r.region||'—'),element('span','Country / region'));stats.append(followers,region);

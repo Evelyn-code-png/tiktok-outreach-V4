@@ -116,6 +116,7 @@ def fetch_kol_details(profile_url):
         'followers': data.get('followerCount') or 0,
         'region': str(data.get('region') or '')[:100],
         'language': str(data.get('language') or '')[:100],
+        'avatar_url': o.avatar_url(data),
         'average_play_count': data.get('averagePlayCount') or 0
     }
 

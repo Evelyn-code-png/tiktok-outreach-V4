@@ -27,7 +27,7 @@ from string import Template
 
 ROOT = Path(os.environ.get('TIKTOK_OUTREACH_HOME', '~/.config/tiktok-outreach-v3')).expanduser()
 EMAIL = re.compile(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+")
-FIELDS = ['name', 'username', 'profile_url', 'email', 'followers', 'region', 'language', 'source']
+FIELDS = ['name', 'username', 'profile_url', 'email', 'followers', 'region', 'language', 'source', 'avatar_url']
 
 class OperationCancelled(ValueError):
     pass
@@ -106,6 +106,21 @@ def api(path, body=None):
         raise ValueError('EasyKOL returned an application error; check permissions, credits, and request details')
     return result.get('data', result)
 
+def avatar_url(row):
+    """Preserve only HTTPS image references; never interpret HTML or inline data."""
+    for key in ('avatar_url', 'avatarUrl', 'avatar', 'avatarThumb', 'avatarMedium', 'avatarLarger', 'profileImageUrl', 'profilePictureUrl'):
+        value = row.get(key)
+        if isinstance(value, dict):
+            value = value.get('url') or next(iter(value.get('url_list') or []), '')
+        if not isinstance(value, str) or len(value) > 4096: continue
+        try:
+            parsed = urllib.parse.urlparse(value)
+            if parsed.scheme == 'https' and parsed.hostname and not parsed.username and not parsed.password:
+                return value
+        except ValueError: pass
+    return ''
+
+
 def normalize(rows):
     out, seen = [], set()
     for row in rows:
@@ -118,7 +133,7 @@ def normalize(rows):
                 username=row.get('username') or '', profile_url=profile, email=email,
                 followers=row.get('followers', row.get('followerCount', '')),
                 region=row.get('region') or '', language=row.get('language') or '',
-                source=row.get('source') or 'EasyKOL')
+                source=row.get('source') or 'EasyKOL', avatar_url=avatar_url(row))
             key = (profile or item['username'] or item['name'], email)
             if key not in seen:
                 seen.add(key)
