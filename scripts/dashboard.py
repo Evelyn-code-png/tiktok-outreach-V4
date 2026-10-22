@@ -21,6 +21,7 @@ import engagement as engagement
 import creator_photos
 import creator_fit
 import reply_sync
+import cloud_tracking
 import google_mail
 import ai_connection
 import html
@@ -97,7 +98,7 @@ class Handler(BaseHTTPRequestHandler):
                             o.record_tracking(cid,m['to'],'click'); self.send_response(302);self.send_header('Location',target);self.end_headers();return
                 except Exception: pass
             return self.respond(404,{'error':'tracking link invalid'})
-        if path in ('/glass.css', '/engagement.js', '/engagement.css', '/send-feedback.js', '/reply-sync.js'):
+        if path in ('/glass.css', '/engagement.js', '/engagement.css', '/send-feedback.js', '/reply-sync.js', '/cloud-tracking.js'):
             mime = 'text/javascript; charset=utf-8' if path.endswith('.js') else 'text/css; charset=utf-8'
             return self.respond(200, (ASSETS / path[1:]).read_bytes(), mime)
         if path in ('/', '/app.js', '/app.css', '/after-state.js', '/team-meeting-collaboration.svg', '/single-user-workspace.png',
@@ -121,7 +122,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/status':
             result = o.doctor(NS(online=False))
             result['easykol_email'] = o.load_config().get('easykol_email', '')
-            result['tracking_configured'] = bool(o.load_config().get('tracking_base_url'))
+            result['tracking_configured'] = cloud_tracking.configured()
             result['ai_configured'] = all(ai_connection.configuration()[:2])
             result['ai_mode'] = 'team' if ai_connection.configuration()[1] == 'team-managed' else 'personal'
             result['google'] = google_mail.status()
@@ -135,6 +136,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, o.history(args))
             except ValueError as e: return self.respond(400, {'error': str(e)})
         if path == '/api/mail/status': return self.respond(200, reply_sync.status())
+        if path == '/api/tracking/status': return self.respond(200, cloud_tracking.status())
         if path == '/api/send-status':
             try: return self.respond(200, {'job': w.latest_send_job(parse_qs(urlparse(self.path).query).get('campaign_id', [''])[0])})
             except (ValueError, OSError): return self.respond(400, {'error': 'Choose a valid saved campaign'})
@@ -143,7 +145,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/campaigns': return self.respond(200, {'campaigns': w.list_campaigns()})
         if path == '/api/templates': return self.respond(200, {'templates': w.list_templates()})
         if path == '/api/metrics':
-            query=parse_qs(urlparse(self.path).query); result=o.metrics(query.get('campaign_id',[None])[0]); result['reply_tracking_enabled']=reply_sync.status()['authorized'] or result['replied']>0; return self.respond(200, result)
+            query=parse_qs(urlparse(self.path).query); cid=query.get('campaign_id',[None])[0]
+            result=cloud_tracking.metrics(o.metrics(cid), cid)
+            result['reply_tracking_enabled']=reply_sync.status()['authorized'] or result['replied']>0
+            return self.respond(200, result)
         try:
             if path == '/api/engagement':
                 query = parse_qs(urlparse(self.path).query)
@@ -195,6 +200,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, google_mail.disconnect())
             if path == '/api/mail/consent': return self.respond(200, reply_sync.consent(data))
             if path == '/api/mail/sync': return self.respond(202, reply_sync.start_sync())
+            if path == '/api/tracking/config': return self.respond(200, cloud_tracking.configure(data))
+            if path == '/api/tracking/sync': return self.respond(200, cloud_tracking.sync())
             if path == '/api/config':
                 if any(k in data and not isinstance(data[k], str) for k in ('sender', 'easykol_email', 'easykol_key', 'gmail_app_password','tracking_base_url','openai_key','openai_model','ai_gateway_url','ai_gateway_token')):
                     raise ValueError('Configuration fields must be text')

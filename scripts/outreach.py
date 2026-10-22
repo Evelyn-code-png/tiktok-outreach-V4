@@ -257,6 +257,7 @@ def db_open():
         db.execute('CREATE TABLE IF NOT EXISTS deliveries (campaign TEXT, email TEXT, status TEXT, message_id TEXT, updated REAL, PRIMARY KEY(campaign,email))')
         db.execute('CREATE TABLE IF NOT EXISTS suppressed (email TEXT PRIMARY KEY)')
         db.execute('CREATE TABLE IF NOT EXISTS tracking_events (campaign TEXT, email TEXT, event TEXT, updated REAL, PRIMARY KEY(campaign,email,event))')
+        db.execute('CREATE TABLE IF NOT EXISTS cloud_tracking_messages (campaign TEXT NOT NULL, email TEXT NOT NULL, id TEXT NOT NULL UNIQUE, origin TEXT NOT NULL, PRIMARY KEY(campaign,email))')
         with db:
             yield db
     finally:
@@ -418,8 +419,12 @@ def send(args):
             msg['From'], msg['To'], msg['Subject'] = sender, email, item['subject']
             msg['Date'], msg['Message-ID'] = formatdate(localtime=True), make_msgid(domain=sender.split('@')[1])
             msg.set_content(item['body'])
+            import cloud_tracking
+            cloud_html = cloud_tracking.prepare(db, campaign['id'], email, item['body'])
             tracking_base = cfg.get('tracking_base_url','').rstrip('/')
-            if tracking_base:
+            if cloud_html:
+                msg.add_alternative(cloud_html, subtype='html')
+            elif tracking_base:
                 pixel = tracking_base + '/t/open/' + campaign['id'] + '/' + tracking_token(campaign['id'], email) + '.gif'
                 safe_body = html.escape(item['body']).replace('\n','<br>')
                 safe_body = re.sub(r'https?://[^\s<]+', lambda m:'<a href="'+html.escape(tracked_url(campaign['id'],email,m.group(0)),quote=True)+'">'+html.escape(m.group(0))+'</a>', safe_body)

@@ -282,7 +282,7 @@ $('send-smtp').onclick=e=>action(e.target,async()=>{
 });
 const STATUS_LABELS={accepted_by_gmail_api:'Sent — accepted by Gmail API',accepted_by_smtp:'Sent — accepted by Gmail',sent_browser:'Gmail reported success',sending:'Submitting / review required',sending_browser:'Browser submitting / review required',unknown:'Result uncertain',rejected:'Rejected by server',failed_before_submission:'Failed before submission'};
 let historyOffset=0;
-async function refreshMetrics(){const d=await api('/api/metrics');$('metric-sent').textContent=d.sent;$('metric-open').textContent=d.tracked?d.open_rate+'%':'Not enabled';$('metric-reply').textContent=d.reply_tracking_enabled?d.reply_rate+'%':'Not connected';$('metric-click').textContent=d.tracked?d.click_rate+'%':'Not enabled';}
+async function refreshMetrics(){const d=await api('/api/metrics');$('metric-sent').textContent=d.sent;$('metric-open').textContent=d.tracked?(d.tracked_sent?d.open_rate+'%':'No tracked sends'):'Not enabled';$('metric-reply').textContent=d.reply_tracking_enabled?d.reply_rate+'%':'Not connected';$('metric-click').textContent=d.tracked?(d.tracked_sent?d.click_rate+'%':'No tracked sends'):'Not enabled';}
 async function refreshHistory(){
  const d=await api('/api/history?limit=100&offset='+historyOffset),root=$('history-result');root.replaceChildren();
  $('history-pages').hidden=!d.total;$('history-previous').disabled=historyOffset===0;$('history-next').disabled=historyOffset+d.deliveries.length>=d.total;

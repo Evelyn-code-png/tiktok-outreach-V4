@@ -53,6 +53,8 @@ Your own connected services bill their usage to your own accounts. This download
 
 ## Reply and open tracking
 
+Optional open/click tracking can now use an independent event receiver while the workspace and mailbox credentials stay local. Configure it under **Account Setup → Open and click tracking**, then use **Delivery log → Sync opens and clicks**. Setup, deployment, and limitations are documented in [打开与点击追踪配置](docs/OPEN_CLICK_TRACKING_CN.md). Each installation needs its own local connection settings; repository updates do not copy access tokens.
+
 Gmail reply tracking matches incoming replies against messages sent from this workspace. It reads relevant messages without deleting mail or marking it read. The app checks periodically while its page is open and visible; **Sync now** is also available after permission. Received replies appear as a creator list with expandable details.
 
 An SMTP success means Gmail accepted the message for sending; it does not guarantee inbox delivery. Open/click tracking is separate and requires a reachable public HTTPS tracking endpoint. It is not enabled merely by downloading or running this local demo, and image blocking or privacy features can affect open tracking.
