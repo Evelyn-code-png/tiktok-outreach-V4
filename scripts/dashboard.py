@@ -18,8 +18,13 @@ import base64
 import outreach as o
 import workspace as w
 import engagement as engagement
+import creator_photos
 import creator_fit
 import reply_sync
+import cloud_tracking
+import google_mail
+import ai_connection
+import html
 
 ASSETS = Path(__file__).resolve().parents[1] / 'assets'
 LOCK = threading.Lock()
@@ -43,7 +48,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('Referrer-Policy', 'no-referrer')
-        self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+        self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: https:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
         self.end_headers()
         self.wfile.write(payload)
 
@@ -62,6 +67,13 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get('Host') != host:
             return self.respond(403, {'error': 'Invalid host'})
         path = urlparse(self.path).path
+        if path == '/oauth/google/callback':
+            try:
+                account = google_mail.finish(parse_qs(urlparse(self.path).query))
+                body = 'Google connected: '+html.escape(account)+'. Return to the workspace tab. Enable reply tracking separately in Delivery log.'
+                return self.respond(200, ('<!doctype html><title>Google connected</title><p>'+body+'</p>').encode(), 'text/html; charset=utf-8')
+            except ValueError as error:
+                return self.respond(400, ('<!doctype html><title>Google connection</title><p>'+html.escape(str(error))+'</p>').encode(), 'text/html; charset=utf-8')
         if path.startswith('/t/open/') and path.endswith('.gif'):
             parts=path.removeprefix('/t/open/').removesuffix('.gif').split('/',1)
             if len(parts)==2:
@@ -86,7 +98,7 @@ class Handler(BaseHTTPRequestHandler):
                             o.record_tracking(cid,m['to'],'click'); self.send_response(302);self.send_header('Location',target);self.end_headers();return
                 except Exception: pass
             return self.respond(404,{'error':'tracking link invalid'})
-        if path in ('/engagement.js', '/engagement.css', '/send-feedback.js', '/reply-sync.js'):
+        if path in ('/glass.css', '/engagement.js', '/engagement.css', '/send-feedback.js', '/reply-sync.js', '/cloud-tracking.js'):
             mime = 'text/javascript; charset=utf-8' if path.endswith('.js') else 'text/css; charset=utf-8'
             return self.respond(200, (ASSETS / path[1:]).read_bytes(), mime)
         if path in ('/', '/app.js', '/app.css', '/after-state.js', '/team-meeting-collaboration.svg', '/single-user-workspace.png',
@@ -110,9 +122,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/status':
             result = o.doctor(NS(online=False))
             result['easykol_email'] = o.load_config().get('easykol_email', '')
-            result['tracking_configured'] = bool(o.load_config().get('tracking_base_url'))
-            result['ai_configured'] = bool((o.load_config().get('openai_key') or os.environ.get('OPENAI_API_KEY'))
-                                           and (o.load_config().get('openai_model') or os.environ.get('OPENAI_MODEL')))
+            result['tracking_configured'] = cloud_tracking.configured()
+            result['ai_configured'] = all(ai_connection.configuration()[:2])
+            result['ai_mode'] = 'team' if ai_connection.configuration()[1] == 'team-managed' else 'personal'
+            result['google'] = google_mail.status()
+            result['ai_gateway_url'] = o.load_config().get('ai_gateway_url','')
             return self.respond(200, result)
         if path == '/api/history':
             query = parse_qs(urlparse(self.path).query)
@@ -122,6 +136,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, o.history(args))
             except ValueError as e: return self.respond(400, {'error': str(e)})
         if path == '/api/mail/status': return self.respond(200, reply_sync.status())
+        if path == '/api/tracking/status': return self.respond(200, cloud_tracking.status())
         if path == '/api/send-status':
             try: return self.respond(200, {'job': w.latest_send_job(parse_qs(urlparse(self.path).query).get('campaign_id', [''])[0])})
             except (ValueError, OSError): return self.respond(400, {'error': 'Choose a valid saved campaign'})
@@ -130,7 +145,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/campaigns': return self.respond(200, {'campaigns': w.list_campaigns()})
         if path == '/api/templates': return self.respond(200, {'templates': w.list_templates()})
         if path == '/api/metrics':
-            query=parse_qs(urlparse(self.path).query); result=o.metrics(query.get('campaign_id',[None])[0]); result['reply_tracking_enabled']=reply_sync.status()['authorized'] or result['replied']>0; return self.respond(200, result)
+            query=parse_qs(urlparse(self.path).query); cid=query.get('campaign_id',[None])[0]
+            result=cloud_tracking.metrics(o.metrics(cid), cid)
+            result['reply_tracking_enabled']=reply_sync.status()['authorized'] or result['replied']>0
+            return self.respond(200, result)
         try:
             if path == '/api/engagement':
                 query = parse_qs(urlparse(self.path).query)
@@ -174,10 +192,18 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(data, dict):
                 raise ValueError('Invalid request format')
             path = urlparse(self.path).path
+            if path == '/api/google/connect':
+                if type(data.get('read', False)) is not bool: raise ValueError('Invalid reply permission choice')
+                return self.respond(200, google_mail.begin(self.server.server_port, data.get('read', False)))
+            if path == '/api/google/disconnect':
+                reply_sync.consent({'allow': False})
+                return self.respond(200, google_mail.disconnect())
             if path == '/api/mail/consent': return self.respond(200, reply_sync.consent(data))
             if path == '/api/mail/sync': return self.respond(202, reply_sync.start_sync())
+            if path == '/api/tracking/config': return self.respond(200, cloud_tracking.configure(data))
+            if path == '/api/tracking/sync': return self.respond(200, cloud_tracking.sync())
             if path == '/api/config':
-                if any(k in data and not isinstance(data[k], str) for k in ('sender', 'easykol_email', 'easykol_key', 'gmail_app_password','tracking_base_url','openai_key','openai_model')):
+                if any(k in data and not isinstance(data[k], str) for k in ('sender', 'easykol_email', 'easykol_key', 'gmail_app_password','tracking_base_url','openai_key','openai_model','ai_gateway_url','ai_gateway_token')):
                     raise ValueError('Configuration fields must be text')
                 with LOCK:
                     cfg = o.load_config()
@@ -189,7 +215,9 @@ class Handler(BaseHTTPRequestHandler):
                             raise ValueError('Invalid EasyKOL key format')
                         cfg['easykol_key'] = key
                     password = data.get('gmail_app_password', '').replace(' ', '').strip()
-                    if password: cfg['gmail_app_password'] = password
+                    if password:
+                        cfg['gmail_app_password'] = password
+                        cfg['mail_transport'] = 'smtp'
                     ai_key = data.get('openai_key', '').strip()
                     if ai_key:
                         if any(c.isspace() for c in ai_key) or len(ai_key) > 500:
@@ -200,6 +228,12 @@ class Handler(BaseHTTPRequestHandler):
                         if not re.fullmatch(r'[A-Za-z0-9._-]{1,100}', ai_model):
                             raise ValueError('Invalid AI model name')
                         cfg['openai_model'] = ai_model
+                    if 'ai_gateway_url' in data:
+                        url = data['ai_gateway_url'].strip().rstrip('/')
+                        if url: ai_connection.validate_url(url)
+                        if url != cfg.get('ai_gateway_url', ''): cfg.pop('ai_gateway_token', None)
+                        cfg['ai_gateway_url'] = url
+                    if data.get('ai_gateway_token', '').strip(): cfg['ai_gateway_token'] = data['ai_gateway_token'].strip()
                     base_url=data.get('tracking_base_url','').strip()
                     if base_url:
                         if not base_url.startswith('https://') or len(base_url)>500: raise ValueError('Tracking URL must use HTTPS')
@@ -207,6 +241,7 @@ class Handler(BaseHTTPRequestHandler):
                     o.private_dir()
                     o.save_json(o.ROOT / 'config.json', cfg)
                 return self.respond(200, {'message': 'Settings saved locally; keys are never returned to the page'})
+            if path == '/api/creator-photo': return self.respond(200, creator_photos.resolve(data))
             if path == '/api/creator-fit': return self.respond(200, creator_fit.generate(data))
             if path == '/api/brand-brief': return self.respond(200, engagement.save_brand(data))
             if path == '/api/brand-context': return self.respond(200, engagement.set_context(data))

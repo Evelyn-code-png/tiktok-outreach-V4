@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """EasyKOL + Gmail outreach. Python 3.10+, standard library only."""
 import argparse
+import base64
+import google_mail
 from contextlib import contextmanager
 import csv
 import getpass
@@ -25,7 +27,7 @@ from string import Template
 
 ROOT = Path(os.environ.get('TIKTOK_OUTREACH_HOME', '~/.config/tiktok-outreach-v3')).expanduser()
 EMAIL = re.compile(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+")
-FIELDS = ['name', 'username', 'profile_url', 'email', 'followers', 'region', 'language', 'source']
+FIELDS = ['name', 'username', 'profile_url', 'email', 'followers', 'region', 'language', 'source', 'avatar_url']
 
 class OperationCancelled(ValueError):
     pass
@@ -84,6 +86,41 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
 
+def easykol_http_error(path, error, key, email):
+    """Show a bounded provider reason, never credentials or a raw error page."""
+    stage = {'/quota': 'balance check', '/intelligent-search': 'creator search'}.get(path, 'request')
+    message = f'EasyKOL {stage} returned HTTP {error.code}.'
+    try:
+        raw = error.read(8193)
+        body = raw[:8192].decode('utf-8', 'replace')
+        edge = re.search(r'\berror code\s*:\s*(1\d{3,4})\b', body, re.I)
+        if edge and edge[1] == '1010':
+            message += ' The provider edge rejected the client signature (1010).'
+        else:
+            try:
+                payload = json.loads(body) if len(raw) <= 8192 else {}
+            except ValueError:
+                payload = {}
+            if isinstance(payload, dict):
+                reason = payload.get('message')
+                if not isinstance(reason, str):
+                    reason = payload.get('error') if isinstance(payload.get('error'), str) else ''
+                # Redact the known credentials before truncation, including encoded forms.
+                for secret in (key, email):
+                    if secret:
+                        for form in (secret, urllib.parse.quote(secret, safe=''), json.dumps(secret)[1:-1]):
+                            reason = reason.replace(form, '[redacted]')
+                reason = re.sub(r'[\x00-\x1f\x7f]', ' ', reason).strip()
+                if reason:
+                    message += ' Provider reason: ' + reason[:320]
+                code = payload.get('statusCode', payload.get('code'))
+                if isinstance(code, int) or (isinstance(code, str) and re.fullmatch(r'[A-Za-z0-9_-]{1,40}', code)):
+                    message += f' (provider code {code}).'
+    except (OSError, ValueError, AttributeError):
+        pass
+    message += ' No automatic retry was made. A failed search has not produced a usable creator list.'
+    return ValueError(message)
+
 def api(path, body=None):
     cfg = load_config()
     key = os.environ.get('EASYKOL_API_KEY') or cfg.get('easykol_key')
@@ -97,12 +134,27 @@ def api(path, body=None):
         with urllib.request.build_opener(NoRedirect).open(req, timeout=45) as r:
             result = json.load(r)
     except urllib.error.HTTPError as e:
-        raise ValueError(f'EasyKOL returned HTTP {e.code}. The request was not retried automatically to avoid duplicate charges.') from None
+        raise easykol_http_error(path, e, key, email) from None
     except (urllib.error.URLError, TimeoutError):
         raise ValueError('The EasyKOL network request failed. It may still have been submitted; check the task and credit balance before retrying.') from None
     if not isinstance(result, dict) or result.get('statusCode', 1000) != 1000 or result.get('error'):
         raise ValueError('EasyKOL returned an application error; check permissions, credits, and request details')
     return result.get('data', result)
+
+def avatar_url(row):
+    """Preserve only HTTPS image references; never interpret HTML or inline data."""
+    for key in ('avatar_url', 'avatarUrl', 'avatar', 'avatarThumb', 'avatarMedium', 'avatarLarger', 'profileImageUrl', 'profilePictureUrl'):
+        value = row.get(key)
+        if isinstance(value, dict):
+            value = value.get('url') or next(iter(value.get('url_list') or []), '')
+        if not isinstance(value, str) or len(value) > 4096: continue
+        try:
+            parsed = urllib.parse.urlparse(value)
+            if parsed.scheme == 'https' and parsed.hostname and not parsed.username and not parsed.password:
+                return value
+        except ValueError: pass
+    return ''
+
 
 def normalize(rows):
     out, seen = [], set()
@@ -116,7 +168,7 @@ def normalize(rows):
                 username=row.get('username') or '', profile_url=profile, email=email,
                 followers=row.get('followers', row.get('followerCount', '')),
                 region=row.get('region') or '', language=row.get('language') or '',
-                source=row.get('source') or 'EasyKOL')
+                source=row.get('source') or 'EasyKOL', avatar_url=avatar_url(row))
             key = (profile or item['username'] or item['name'], email)
             if key not in seen:
                 seen.add(key)
@@ -240,6 +292,7 @@ def db_open():
         db.execute('CREATE TABLE IF NOT EXISTS deliveries (campaign TEXT, email TEXT, status TEXT, message_id TEXT, updated REAL, PRIMARY KEY(campaign,email))')
         db.execute('CREATE TABLE IF NOT EXISTS suppressed (email TEXT PRIMARY KEY)')
         db.execute('CREATE TABLE IF NOT EXISTS tracking_events (campaign TEXT, email TEXT, event TEXT, updated REAL, PRIMARY KEY(campaign,email,event))')
+        db.execute('CREATE TABLE IF NOT EXISTS cloud_tracking_messages (campaign TEXT NOT NULL, email TEXT NOT NULL, id TEXT NOT NULL UNIQUE, origin TEXT NOT NULL, PRIMARY KEY(campaign,email))')
         with db:
             yield db
     finally:
@@ -263,8 +316,8 @@ def record_tracking(campaign, email, event):
 
 def metrics(campaign_id=None):
     with db_open() as db:
-        where=" WHERE status IN ('accepted_by_smtp','sent_browser')"; params=[]
-        event_where=" WHERE d.status IN ('accepted_by_smtp','sent_browser')"
+        where=" WHERE status IN ('accepted_by_smtp','accepted_by_gmail_api','sent_browser')"; params=[]
+        event_where=" WHERE d.status IN ('accepted_by_smtp','accepted_by_gmail_api','sent_browser')"
         if campaign_id:
             where+=' AND campaign=?'; event_where+=' AND d.campaign=?'; params=[campaign_id]
         sent=db.execute('SELECT COUNT(*) FROM deliveries'+where,params).fetchone()[0]
@@ -373,8 +426,12 @@ def send(args):
     if args.campaign_id != campaign['id']:
         raise ValueError('The --campaign-id must match the ID shown in the preview before sending')
     password = os.environ.get('GMAIL_APP_PASSWORD') or cfg.get('gmail_app_password')
-    if not password:
-        raise ValueError('A Gmail app password is required for SMTP sending; run setup first')
+    use_google = cfg.get('mail_transport') == 'google'
+    if use_google:
+        google_mail.access()  # Fail before recording a submission if refresh fails.
+        google_connection = google_mail.load().get('connection_id')
+    elif cfg.get('mail_transport') == 'disconnected' or not password:
+        raise ValueError('Connect Google in Account Setup or configure SMTP sending first')
     report = []
     planned = min(args.max_messages, len(browser_plan(args)['pending']))
     report_progress(args, completed=0, total=planned, unit='messages')
@@ -397,8 +454,12 @@ def send(args):
             msg['From'], msg['To'], msg['Subject'] = sender, email, item['subject']
             msg['Date'], msg['Message-ID'] = formatdate(localtime=True), make_msgid(domain=sender.split('@')[1])
             msg.set_content(item['body'])
+            import cloud_tracking
+            cloud_html = cloud_tracking.prepare(db, campaign['id'], email, item['body'])
             tracking_base = cfg.get('tracking_base_url','').rstrip('/')
-            if tracking_base:
+            if cloud_html:
+                msg.add_alternative(cloud_html, subtype='html')
+            elif tracking_base:
                 pixel = tracking_base + '/t/open/' + campaign['id'] + '/' + tracking_token(campaign['id'], email) + '.gif'
                 safe_body = html.escape(item['body']).replace('\n','<br>')
                 safe_body = re.sub(r'https?://[^\s<]+', lambda m:'<a href="'+html.escape(tracked_url(campaign['id'],email,m.group(0)),quote=True)+'">'+html.escape(m.group(0))+'</a>', safe_body)
@@ -407,35 +468,47 @@ def send(args):
             db.commit()
             status = 'failed_before_submission'
             try:
-                with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=40, context=ssl.create_default_context()) as smtp:
-                    smtp.login(sender, password.replace(' ', ''))
-                    status = 'unknown'
-                    refused = smtp.send_message(msg)
-                    status = 'rejected' if refused else 'accepted_by_smtp'
-            except (OSError, smtplib.SMTPException):
+                if use_google:
+                    # Refresh before submission; never retry an ambiguous send.
+                    with google_mail.LOCK:
+                        connection = google_mail.load()
+                        if connection.get('connection_id') != google_connection or connection.get('email') != sender.lower():
+                            raise ValueError('The Google sending account changed. Review the campaign again.')
+                        token = google_mail.access()
+                        status = 'unknown'
+                        response = google_mail.request('https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
+                            token=token, body={'raw': base64.urlsafe_b64encode(msg.as_bytes()).decode()})
+                    if response.get('id'): status = 'accepted_by_gmail_api'
+                else:
+                    with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=40, context=ssl.create_default_context()) as smtp:
+                        smtp.login(sender, password.replace(' ', ''))
+                        status = 'unknown'
+                        refused = smtp.send_message(msg)
+                        status = 'rejected' if refused else 'accepted_by_smtp'
+            except (OSError, ValueError, smtplib.SMTPException):
                 # A lost response after DATA may mean sent: never automatically retry.
                 pass
             db.execute('UPDATE deliveries SET status=?,updated=? WHERE campaign=? AND email=?', (status, time.time(), campaign['id'], email))
             db.commit()
-            if status == 'accepted_by_smtp': record_tracking(campaign['id'], email, 'sent')
+            if status in ('accepted_by_smtp', 'accepted_by_gmail_api'): record_tracking(campaign['id'], email, 'sent')
             report.append({'email': email, 'status': status})
             sent += 1
             report_progress(args, completed=sent, total=planned, unit='messages')
-            if status != 'accepted_by_smtp':
+            if status not in ('accepted_by_smtp', 'accepted_by_gmail_api'):
                 break
             if sent < args.max_messages:
                 time.sleep(args.delay)
     attempted = [r for r in report if not r.get('skipped')]
-    accepted = sum(r['status'] == 'accepted_by_smtp' for r in attempted)
+    accepted = sum(r['status'] in ('accepted_by_smtp', 'accepted_by_gmail_api') for r in attempted)
     return {'campaign_id': campaign['id'], 'results': report, 'attempted': len(attempted), 'accepted': accepted,
             'failed_or_unknown': len(attempted) - accepted, 'skipped': len(report) - len(attempted),
-            'note': 'accepted_by_smtp means the server accepted the message; it does not prove inbox delivery. Unknown or in-progress results are not retried automatically.'}
+            'note': 'accepted_by_smtp / accepted_by_gmail_api means the server accepted the message; it does not prove inbox delivery. Unknown or in-progress results are not retried automatically.'}
 
 def doctor(args):
     cfg = load_config()
     result = {'config_path': str(ROOT / 'config.json'), 'sender': cfg.get('sender'),
               'easykol_configured': bool((cfg.get('easykol_key') or os.environ.get('EASYKOL_API_KEY')) and (cfg.get('easykol_email') or os.environ.get('EASYKOL_API_EMAIL'))),
-              'gmail_configured': bool(cfg.get('gmail_app_password') or os.environ.get('GMAIL_APP_PASSWORD'))}
+              'gmail_configured': (google_mail.connected() if cfg.get('mail_transport') == 'google' else False if cfg.get('mail_transport') == 'disconnected' else bool(cfg.get('gmail_app_password') or os.environ.get('GMAIL_APP_PASSWORD')))}
     if args.online:
         result['quota'] = api('/quota')
     return result

@@ -2,6 +2,12 @@
 
 A local workspace for finding TikTok creators with EasyKOL, reviewing contacts, preparing editable outreach emails, and tracking Gmail replies.
 
+## Simplified connections
+
+For teammates pulling this repository, see [团队安装与部署步骤](docs/TEAM_QUICKSTART_CN.md). A private member connection file is required for the shared AI service; Git pull does not copy the administrator's credentials.
+
+Google OAuth sending/reply access and an optional team AI gateway are now supported. Team administrators must configure these services before members can connect. See [connection setup](docs/CONNECTION_SETUP_CN.md). SMTP and personal AI keys remain available as fallbacks.
+
 ## Download and open
 
 Select **Code → Download ZIP** on this private repository page, then extract the complete folder. Each teammate must first have access to the repository.
@@ -38,14 +44,16 @@ The sidebar and **Previous / Next** switch between separate pages and preserve y
 | --- | --- |
 | View the interface, import/add contacts, edit manual email drafts | None |
 | Real creator search | Your EasyKOL account email, API key, and sufficient credits |
-| AI creator-fit analysis and personalized opening options | Your compatible AI API key and model access; manual editing remains available |
-| Send directly using Gmail SMTP | Your sending Gmail and a Gmail app password |
-| Automatically sync matching Gmail replies | Gmail setup above, followed by explicit permission in **Delivery log** |
+| AI creator-fit analysis and personalized opening options | Team AI service URL and access code, or your personal AI API key and model; manual editing remains available |
+| Send directly using Gmail SMTP | Connect Google, or use your sending Gmail and a Gmail app password for SMTP |
+| Automatically sync matching Gmail replies | Google connection with reply access (or SMTP setup), followed by explicit permission in **Delivery log** |
 | Gmail browser sending instructions | An agent capable of following the copied instruction in your signed-in Gmail; copying does not send email |
 
 Your own connected services bill their usage to your own accounts. This download contains no shared EasyKOL credits, AI key, Gmail password, or sender mailbox.
 
 ## Reply and open tracking
+
+Optional open/click tracking can now use an independent event receiver while the workspace and mailbox credentials stay local. Configure it under **Account Setup → Open and click tracking**, then use **Delivery log → Sync opens and clicks**. Setup, deployment, and limitations are documented in [打开与点击追踪配置](docs/OPEN_CLICK_TRACKING_CN.md). Each installation needs its own local connection settings; repository updates do not copy access tokens.
 
 Gmail reply tracking matches incoming replies against messages sent from this workspace. It reads relevant messages without deleting mail or marking it read. The app checks periodically while its page is open and visible; **Sync now** is also available after permission. Received replies appear as a creator list with expandable details.
 
@@ -68,4 +76,4 @@ node --test tests/test_send_feedback.cjs
 
 Node is optional and is used only for the JavaScript tests. It is not needed to run the application.
 
-See [QUICKSTART.md](QUICKSTART.md) for a short walkthrough and [WORKFLOW_ADDITIONS.md](WORKFLOW_ADDITIONS.md) for implementation and restoration notes. Instruction has four switchable empty sections: User journey, How it works, Risks & Where It Breaks, and Status & Next Steps.
+See [QUICKSTART.md](QUICKSTART.md) for a short walkthrough and [WORKFLOW_ADDITIONS.md](WORKFLOW_ADDITIONS.md) for implementation and restoration notes. Instruction includes Risks & Where It Breaks with the team’s test findings, and Status & Next Steps with working features, current challenges, and planned improvements.

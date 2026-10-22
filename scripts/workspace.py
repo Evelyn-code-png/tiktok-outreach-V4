@@ -50,6 +50,8 @@ def get_run(run_id):
     if not (p / 'creators.csv').exists(): raise ValueError('The contact list does not exist')
     result = summarize_run(p)
     result['contacts'] = o.csv_read(p / 'creators.csv')
+    import creator_photos
+    creator_photos.enrich(result['contacts'], p)
     return result
 
 def add_contact(data):
@@ -208,7 +210,7 @@ def start_job(kind, data):
         campaign = o.load_campaign(location('campaigns', cid + '.json'))
         if data.get('execute') is not True: raise ValueError('Sending requires explicit confirmation')
         if not 1 <= int(data.get('max_messages', 20)) <= 500: raise ValueError('The batch size must be 1-500 messages')
-        if not o.doctor(NS(online=False))['gmail_configured']: raise ValueError('SMTP is not configured; Codex can use the signed-in Gmail browser instead')
+        if not o.doctor(NS(online=False))['gmail_configured']: raise ValueError('Connect Google or configure SMTP in Account Setup first')
     if kind == 'emails': get_run(data.get('run_id'))
     if kind == 'emails-resume':
         old = get_job(data.get('source_job_id'))

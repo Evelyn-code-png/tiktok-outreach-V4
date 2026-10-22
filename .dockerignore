@@ -1,0 +1,4 @@
+**
+!scripts/
+!scripts/ai_gateway.py
+!Dockerfile.ai
