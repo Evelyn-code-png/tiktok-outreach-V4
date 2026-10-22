@@ -19,3 +19,7 @@ google-client.json
 google-token.json
 team-connection*.json
 .env
+cloud-tracking.json
+tracking-access-token.txt
+private-outreach-backup/
+node_modules/
