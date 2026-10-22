@@ -86,6 +86,41 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
 
+def easykol_http_error(path, error, key, email):
+    """Show a bounded provider reason, never credentials or a raw error page."""
+    stage = {'/quota': 'balance check', '/intelligent-search': 'creator search'}.get(path, 'request')
+    message = f'EasyKOL {stage} returned HTTP {error.code}.'
+    try:
+        raw = error.read(8193)
+        body = raw[:8192].decode('utf-8', 'replace')
+        edge = re.search(r'\berror code\s*:\s*(1\d{3,4})\b', body, re.I)
+        if edge and edge[1] == '1010':
+            message += ' The provider edge rejected the client signature (1010).'
+        else:
+            try:
+                payload = json.loads(body) if len(raw) <= 8192 else {}
+            except ValueError:
+                payload = {}
+            if isinstance(payload, dict):
+                reason = payload.get('message')
+                if not isinstance(reason, str):
+                    reason = payload.get('error') if isinstance(payload.get('error'), str) else ''
+                # Redact the known credentials before truncation, including encoded forms.
+                for secret in (key, email):
+                    if secret:
+                        for form in (secret, urllib.parse.quote(secret, safe=''), json.dumps(secret)[1:-1]):
+                            reason = reason.replace(form, '[redacted]')
+                reason = re.sub(r'[\x00-\x1f\x7f]', ' ', reason).strip()
+                if reason:
+                    message += ' Provider reason: ' + reason[:320]
+                code = payload.get('statusCode', payload.get('code'))
+                if isinstance(code, int) or (isinstance(code, str) and re.fullmatch(r'[A-Za-z0-9_-]{1,40}', code)):
+                    message += f' (provider code {code}).'
+    except (OSError, ValueError, AttributeError):
+        pass
+    message += ' No automatic retry was made. A failed search has not produced a usable creator list.'
+    return ValueError(message)
+
 def api(path, body=None):
     cfg = load_config()
     key = os.environ.get('EASYKOL_API_KEY') or cfg.get('easykol_key')
@@ -99,7 +134,7 @@ def api(path, body=None):
         with urllib.request.build_opener(NoRedirect).open(req, timeout=45) as r:
             result = json.load(r)
     except urllib.error.HTTPError as e:
-        raise ValueError(f'EasyKOL returned HTTP {e.code}. The request was not retried automatically to avoid duplicate charges.') from None
+        raise easykol_http_error(path, e, key, email) from None
     except (urllib.error.URLError, TimeoutError):
         raise ValueError('The EasyKOL network request failed. It may still have been submitted; check the task and credit balance before retrying.') from None
     if not isinstance(result, dict) or result.get('statusCode', 1000) != 1000 or result.get('error'):
@@ -257,6 +292,7 @@ def db_open():
         db.execute('CREATE TABLE IF NOT EXISTS deliveries (campaign TEXT, email TEXT, status TEXT, message_id TEXT, updated REAL, PRIMARY KEY(campaign,email))')
         db.execute('CREATE TABLE IF NOT EXISTS suppressed (email TEXT PRIMARY KEY)')
         db.execute('CREATE TABLE IF NOT EXISTS tracking_events (campaign TEXT, email TEXT, event TEXT, updated REAL, PRIMARY KEY(campaign,email,event))')
+        db.execute('CREATE TABLE IF NOT EXISTS cloud_tracking_messages (campaign TEXT NOT NULL, email TEXT NOT NULL, id TEXT NOT NULL UNIQUE, origin TEXT NOT NULL, PRIMARY KEY(campaign,email))')
         with db:
             yield db
     finally:
@@ -418,8 +454,12 @@ def send(args):
             msg['From'], msg['To'], msg['Subject'] = sender, email, item['subject']
             msg['Date'], msg['Message-ID'] = formatdate(localtime=True), make_msgid(domain=sender.split('@')[1])
             msg.set_content(item['body'])
+            import cloud_tracking
+            cloud_html = cloud_tracking.prepare(db, campaign['id'], email, item['body'])
             tracking_base = cfg.get('tracking_base_url','').rstrip('/')
-            if tracking_base:
+            if cloud_html:
+                msg.add_alternative(cloud_html, subtype='html')
+            elif tracking_base:
                 pixel = tracking_base + '/t/open/' + campaign['id'] + '/' + tracking_token(campaign['id'], email) + '.gif'
                 safe_body = html.escape(item['body']).replace('\n','<br>')
                 safe_body = re.sub(r'https?://[^\s<]+', lambda m:'<a href="'+html.escape(tracked_url(campaign['id'],email,m.group(0)),quote=True)+'">'+html.escape(m.group(0))+'</a>', safe_body)
