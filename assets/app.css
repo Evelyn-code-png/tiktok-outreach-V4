@@ -165,3 +165,13 @@ main>section>.section-head h2:focus{outline:none}.inline-feedback{scroll-margin-
 .risk-two .risk-io{grid-template-columns:1fr}
 .risk-shot.narrow{max-width:400px;justify-self:center}
 @media(max-width:600px){.risk-card-head{flex-wrap:wrap}.risk-tags{margin-left:56px}}
+
+
+/* Status & Next Steps shares the Risks panel type scale and card styles. */
+#instruction-status .status-working-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#instruction-status .status-feature{align-content:start;min-width:0}
+#instruction-status .status-next-heading{margin-top:10px}
+#instruction-status .status-next-actions{display:grid;gap:12px}
+#instruction-status .status-next-actions>strong{font-size:13px;color:#346048}
+#instruction-status .status-next-copy{margin:0;font-size:13px;line-height:1.6;color:#4f6158}
+@media(max-width:760px){#instruction-status .status-working-grid{grid-template-columns:1fr}}
