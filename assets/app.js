@@ -76,7 +76,7 @@ function syncContactViewButtons(){for(const [id,view] of [['view-cards','cards']
 function selectionCount(){invalidatePreview('Recipient selection changed. Generate a new draft.');$('selection-count').textContent=`Selected ${selected.size} unique emails`;$('confirm-send').checked=false;updateRecipientHandoff();saveWorkspace();}
 
 function updateRecipientHandoff(){
- $('outreach-selected').textContent=selected.size?`Outreach (${selected.size})`:'Outreach';
+ $('outreach-selected').textContent=selected.size?`Continue with ${selected.size} selected →`:'Continue with selected →';
  $('outreach-recipients').textContent=selected.size?`${selected.size} recipient${selected.size===1?'':'s'} selected${activeRun?.title?' from '+englishLabel(activeRun.title):''}. Generate a draft to review each email before sending.`:'Select recipients in Contacts to prepare your outreach.';
  if(selected.size)$('outreach-selection-error').hidden=true;
 }
@@ -257,7 +257,7 @@ $('previous-page').onclick=()=>{contactPage--;renderContacts();};
 $('next-page').onclick=()=>{contactPage++;renderContacts();};
 $('clear-selection').onclick=()=>{selected.clear();renderContacts();selectionCount();};
 $('export-csv').onclick=e=>action(e.target,async()=>{if(!activeRun)throw new Error('Open a contact list first');const r=await fetch('/api/csv/'+encodeURIComponent(activeRun.id),{headers:{'X-Outreach-Token':token}});if(!r.ok)throw new Error('Download failed');const u=URL.createObjectURL(await r.blob()),a=element('a');a.href=u;a.download=activeRun.id+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);});
-$('draft-form').onsubmit=e=>{e.preventDefault();action(e.submitter,async()=>{if(!activeRun||!selected.size)throw new Error('Select recipients in Contacts first');const r=await api('/api/draft',{run_id:activeRun.id,selected_emails:[...selected],subject:$('subject').value,body:$('body').value});const c=await api('/api/campaign/'+r.campaign_id);renderCampaign(c,r.campaign_file);await refreshCampaigns();notice(`Draft saved with ${r.recipients} recipients; nothing sent`);});};
+$('draft-form').onsubmit=e=>{e.preventDefault();action(e.submitter,async()=>{if(!activeRun||!selected.size)throw new Error('Select recipients in Contacts first');const r=await api('/api/draft',{run_id:activeRun.id,selected_emails:[...selected],subject:$('subject').value,body:$('body').value});const c=await api('/api/campaign/'+r.campaign_id);renderCampaign(c,r.campaign_file);await refreshCampaigns();notice(`Draft saved with ${r.recipients} recipients; nothing sent`);window.OutreachPages?.go('send');});};
 $('load-template').onclick=e=>action(e.target,async()=>{const id=$('template-select').value;if(!id)throw new Error('Select a template');const t=(await api('/api/templates')).templates.find(x=>x.id===id);if(!t)throw new Error('Template not found');$('subject').value=t.subject;$('body').value=t.body;invalidatePreview('Template loaded. Generate a new draft preview.');notice('Template loaded');});
 $('save-template').onclick=e=>action(e.target,async()=>{const name=$('template-name').value.trim();if(!name)throw new Error('Enter a template name first');await api('/api/template',{name,subject:$('subject').value,body:$('body').value});await refreshTemplates();$('template-name').value='';notice('Template saved; nothing was sent');});
 $('load-campaign').onclick=e=>action(e.target,async()=>{const id=$('campaign-select').value;if(!id)throw new Error('Select a campaign');renderCampaign(await api('/api/campaign/'+id),null);});
@@ -314,26 +314,6 @@ for(const id of FORM_FIELDS)$(id).addEventListener('input',saveWorkspace);
 function invalidatePreview(message){if(!campaign)return;campaign=null;sessionStorage.removeItem('previewCampaign');$('send-controls').hidden=true;$('campaign-preview').replaceChildren(element('p',message,'hint'));}
 for(const id of ['subject','body'])$(id).addEventListener('input',()=>invalidatePreview('Content changed. Generate a new preview before sending.'));
 
-function initializeInstruction(){
- const tabs=[...document.querySelectorAll('[data-instruction-tab]')];
- function selectTab(tab){
-  for(const item of tabs){
-   const active=item===tab;
-   item.classList.toggle('active',active);
-   item.setAttribute('aria-selected',String(active));item.tabIndex=active?0:-1;
-   $(item.dataset.instructionTab).hidden=!active;
-  }
- }
- for(const [index,tab] of tabs.entries()){
-  tab.addEventListener('click',()=>selectTab(tab));
-  tab.addEventListener('keydown',event=>{
-   const targets={ArrowRight:(index+1)%tabs.length,ArrowLeft:(index+tabs.length-1)%tabs.length,Home:0,End:tabs.length-1};
-   if(!Object.hasOwn(targets,event.key))return;
-   event.preventDefault();const next=tabs[targets[event.key]];selectTab(next);next.focus();
-  });
- }
-}
-initializeInstruction();
 syncContactViewButtons();
 Promise.all([refreshStatus(),refreshRuns(),refreshCampaigns(),refreshTemplates(),refreshHistory(),refreshMetrics()]).then(restoreWorkspace).then(restoretask).catch(e=>notice(e.message,true));
 
@@ -357,17 +337,19 @@ refreshJobs().catch(e=>notice(e.message,true));
 // V3 workspace navigation: keep panels mounted so drafts and selections survive page changes.
 (() => {
  const pages = {
-  discover:['Find Creators','Find the right creators for your next collaboration.'],
-  contacts:['Contacts','Review your lists and choose who to contact.'],
-  compose:['Outreach email','Shape your message, then review it before sending.'],
-  history:['Delivery log','Keep track of deliveries and campaign activity.'],
-  settings:['Account Setup','Connect the accounts you use for creator outreach.'],
-  'user-instruction':['Instruction','']
+  brand:['Choose a brand','Pick the brand you are promoting. Matches and emails use it.'],
+  discover:['Find creators','Search EasyKOL for creators who fit your brand.'],
+  contacts:['Choose creators','Review your lists and tick the creators you want to contact.'],
+  compose:['Confirm your email template','Adjust the wording. Each email is personalized for its creator.'],
+  send:['Preview and send','Read each email, confirm, then send.'],
+  history:['Delivery log','Keep track of deliveries, replies and campaign activity.'],
+  settings:['Settings','Accounts, appearance and help.']
  };
+ const stepOf={brand:1,discover:2,contacts:2,compose:3,send:4};
  const sidebar=document.getElementById('workspace-sidebar');
  const toggle=document.getElementById('sidebar-toggle');
  const links=[...sidebar.querySelectorAll('nav a')];
- const workflow=new Set(['discover','contacts','compose','history','settings']);
+ const workflow=new Set(Object.keys(stepOf));
  let activePage=null;
  let collapsed=false;
  try {collapsed=localStorage.getItem('outreach-v3-sidebar-collapsed')==='true';} catch {}
@@ -381,22 +363,23 @@ refreshJobs().catch(e=>notice(e.message,true));
  toggle.addEventListener('click',()=>{setCollapsed(!collapsed);try{localStorage.setItem('outreach-v3-sidebar-collapsed',String(collapsed));}catch{}});
  function showPage(){
   const hash=location.hash.slice(1);
-  const page=hash==='ai-solution'?'user-instruction':Object.hasOwn(pages,hash)?hash:'discover';
+  const page=Object.hasOwn(pages,hash)?hash:'brand';
   const continuous=workflow.has(page);
   for(const id of Object.keys(pages))document.getElementById(id).hidden=id!==page;
   for(const link of links){
-   const selected=link.getAttribute('href')==='#'+page;
+   const selected=link.getAttribute('href')==='#'+page||(page==='contacts'&&link.getAttribute('href')==='#discover');
    link.classList.toggle('is-current',selected);
    if(selected)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
   }
-  document.getElementById('workspace-page-title').textContent=continuous?'Creator outreach':pages[page][0];
-  document.getElementById('workspace-page-description').textContent=continuous?'Find creators, manage contacts, prepare emails, and review activity in one workspace.':pages[page][1];
+  document.getElementById('workspace-page-title').textContent=continuous?'New campaign':pages[page][0];
+  document.getElementById('workspace-page-description').textContent=continuous?'Four steps: choose a brand, pick creators, confirm the email, then preview and send.':pages[page][1];
   document.title=pages[page][0]+' · Outreach V4';
-  const order=Object.keys(pages),index=order.indexOf(page),previous=order[index-1],next=order[index+1];
+  const order=Object.keys(stepOf),index=order.indexOf(page),previous=continuous?order[index-1]:null,next=continuous?order[index+1]:null;
+  $('workflow-pagination').hidden=!continuous;
   $('workflow-previous').disabled=!previous;$('workflow-next').disabled=!next;
   $('workflow-previous-label').textContent=previous?pages[previous][0]:'';
   $('workflow-next-label').textContent=next?pages[next][0]:'';
-  $('workflow-page-position').textContent=`${index+1} / ${order.length}`;
+  $('workflow-page-position').textContent=continuous?`Step ${stepOf[page]} of 4`:'';
   $('workflow-previous').onclick=()=>{if(previous)go(previous);};
   $('workflow-next').onclick=()=>{if(next)go(next);};
   if(activePage!==page){
@@ -409,7 +392,7 @@ refreshJobs().catch(e=>notice(e.message,true));
   if(link.hash===location.hash){activePage=null;showPage();}
  });
  function go(page){if(!Object.hasOwn(pages,page))return;if(location.hash==='#'+page)showPage();else location.hash=page;}
- window.OutreachPages={go};
+ window.OutreachPages={go,current:()=>activePage};
  window.addEventListener('hashchange',showPage);
  showPage();
 })();
