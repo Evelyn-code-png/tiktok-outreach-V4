@@ -98,13 +98,14 @@ class Handler(BaseHTTPRequestHandler):
                             o.record_tracking(cid,m['to'],'click'); self.send_response(302);self.send_header('Location',target);self.end_headers();return
                 except Exception: pass
             return self.respond(404,{'error':'tracking link invalid'})
-        if path in ('/glass.css', '/engagement.js', '/engagement.css', '/send-feedback.js', '/reply-sync.js', '/cloud-tracking.js'):
+        if path in ('/glass.css', '/engagement.js', '/engagement.css', '/send-feedback.js', '/reply-sync.js', '/cloud-tracking.js', '/guided.js', '/guided.css'):
             mime = 'text/javascript; charset=utf-8' if path.endswith('.js') else 'text/css; charset=utf-8'
             return self.respond(200, (ASSETS / path[1:]).read_bytes(), mime)
-        if path in ('/', '/app.js', '/app.css', '/after-state.js', '/team-meeting-collaboration.svg', '/single-user-workspace.png',
+        if path in ('/', '/app.js', '/app.css', '/after-state.js', '/team-meeting-collaboration.svg', '/owl.svg', '/single-user-workspace.png',
                     '/fragmented-to-connected.png', '/target-users.png', '/business-impact.png'):
             name = {'/': 'index.html', '/app.js': 'app.js', '/after-state.js': 'after-state.js', '/app.css': 'app.css',
                     '/team-meeting-collaboration.svg': 'team-meeting-collaboration.svg',
+                    '/owl.svg': 'owl.svg',
                     '/single-user-workspace.png': 'single-user-workspace.png',
                     '/fragmented-to-connected.png': 'fragmented-to-connected.png',
                     '/target-users.png': 'target-users.png',
@@ -112,6 +113,7 @@ class Handler(BaseHTTPRequestHandler):
             mime = {'/': 'text/html; charset=utf-8', '/app.js': 'text/javascript; charset=utf-8', '/after-state.js': 'text/javascript; charset=utf-8',
                     '/app.css': 'text/css; charset=utf-8',
                     '/team-meeting-collaboration.svg': 'image/svg+xml',
+                    '/owl.svg': 'image/svg+xml',
                     '/single-user-workspace.png': 'image/png',
                     '/fragmented-to-connected.png': 'image/png',
                     '/target-users.png': 'image/png',
