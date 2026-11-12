@@ -482,7 +482,9 @@ class DashboardHTTPTests(unittest.TestCase):
                 self.assertTrue(r.read())
         with self.request('/') as r:
             html=r.read().decode()
-            self.assertIn('>Instruction</span>',html)
+            self.assertIn('>Tutorial</span>',html)
+            self.assertIn('id="brand"',html)
+            self.assertIn('id="send"',html)
             self.assertIn('Card wall',html)
             self.assertIn('Creator details',html)
             self.assertFalse(any('\u4e00'<=c<='\u9fff' for c in html))

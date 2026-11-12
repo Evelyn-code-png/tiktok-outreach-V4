@@ -30,13 +30,16 @@ bash "Open Dashboard.command"
 
 ## First use
 
-1. **Account Setup:** add your own accounts for any live services you want to use. Account setup is not needed to browse the interface, import contacts, or prepare manual drafts.
-2. **Find Creators:** enter your criteria, result count, and credit budget. **Start search** submits an EasyKOL search and opens **Contacts**, with live task status.
-3. **Contacts:** review the card wall or table, open creator details, import CSV / Excel files, or expand **Add contact by email**. Select recipients and click **Outreach**.
-4. **Outreach email:** edit the subject and message, then click **Generate and preview draft**. Review each recipient's email before sending. Preparing a draft does not send it.
-5. **Delivery log:** review sending results and enable Gmail reply tracking if needed.
+The first time the workspace opens, a short welcome explains the four steps. Choose **Start the 1-minute tour**, **Load sample data** (three demo creators with `example.com` addresses and a sample brand; nothing is sent), or **Skip**. Reopen it any time from **Tutorial** in the sidebar or the **?** button.
 
-The sidebar and **Previous / Next** switch between separate pages and preserve your current inputs and recipient selection. Navigation itself does not run a search or send email.
+A new campaign follows four steps, shown in the sidebar and in the progress bar at the top of each page:
+
+1. **Brand:** pick a saved brand card or add a new brand. Creator matching and personalized openings use it.
+2. **Creators:** **Search EasyKOL** for new creators, or switch to **My lists and import** to open a saved list, upload a CSV / Excel file, or add a contact by email. Tick the creators you want, then click **Continue with selected**.
+3. **Template:** load a saved template or edit the subject and message, then click **Next: Preview emails**. Preparing a draft does not send it.
+4. **Preview and send:** review each recipient's email, tick the confirmation box, and send.
+
+**Delivery log** and **Settings** sit under Tools. Settings holds account connections, the theme color (it also recolors the owl logo), and the step-tip switch. Navigation itself does not run a search or send email.
 
 ## Which accounts are needed?
 
@@ -76,4 +79,4 @@ node --test tests/test_send_feedback.cjs
 
 Node is optional and is used only for the JavaScript tests. It is not needed to run the application.
 
-See [QUICKSTART.md](QUICKSTART.md) for a short walkthrough and [WORKFLOW_ADDITIONS.md](WORKFLOW_ADDITIONS.md) for implementation and restoration notes. Instruction includes Risks & Where It Breaks with the team’s test findings, and Status & Next Steps with working features, current challenges, and planned improvements.
+See [QUICKSTART.md](QUICKSTART.md) for a short walkthrough and [WORKFLOW_ADDITIONS.md](WORKFLOW_ADDITIONS.md) for implementation and restoration notes.

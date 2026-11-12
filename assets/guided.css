@@ -1,0 +1,166 @@
+/* Guided flow layer: loaded after glass.css. Theme colors drive buttons, highlights and the owl logo. */
+:root,
+:root[data-theme="forest"] { --accent: #2f6a5c; --accent-hover: #24564a; --accent-soft: #e7f1ee; --accent-line: #b9d3cb; }
+:root[data-theme="indigo"] { --accent: #4338ca; --accent-hover: #3730a3; --accent-soft: #eeedfb; --accent-line: #c7c3f2; }
+:root[data-theme="ocean"] { --accent: #1d4ed8; --accent-hover: #1e40af; --accent-soft: #e8effd; --accent-line: #bbcdf7; }
+:root[data-theme="plum"] { --accent: #7e22ce; --accent-hover: #6b21a8; --accent-soft: #f4e9fc; --accent-line: #dcc0f3; }
+:root[data-theme="coral"] { --accent: #c2410c; --accent-hover: #9a3412; --accent-soft: #fdeee6; --accent-line: #f4c4ab; }
+:root[data-theme="graphite"] { --accent: #334155; --accent-hover: #1e293b; --accent-soft: #eef1f5; --accent-line: #cbd3dd; }
+:root { --ink: #17202a; --muted: #4f5d6b; --line: #dfe5ea; }
+
+/* ---------- Owl logo (color follows the theme) ---------- */
+.owl-mark { display: inline-block; flex: none; width: 26px; height: 36px; background: var(--accent);
+  -webkit-mask: url(/owl.svg) center / contain no-repeat; mask: url(/owl.svg) center / contain no-repeat; }
+.owl-large { width: 46px; height: 64px; }
+.owl-tiny { width: 18px; height: 25px; }
+#workspace-sidebar .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); }
+#workspace-sidebar .sidebar-monogram.owl-mark { display: none; width: 26px; height: 36px; font-size: 0; }
+.sidebar-collapsed #workspace-sidebar .sidebar-monogram.owl-mark { display: inline-block; width: 26px; height: 36px; }
+
+/* ---------- Sidebar navigation ---------- */
+#workspace-navigation { gap: 4px; }
+#workspace-navigation .nav-group { margin: 14px 12px 4px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+#workspace-navigation .nav-group:first-child { margin-top: 0; }
+#workspace-navigation a, #workspace-navigation .nav-button { color: var(--ink); }
+#workspace-navigation .nav-label { display: flex; flex-direction: column; line-height: 1.25; font-weight: 600; }
+#workspace-navigation .nav-label .nav-hint { font-size: 12px; font-weight: 400; color: var(--muted); }
+#workspace-navigation .nav-step { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 13px; font-weight: 700; background: #eef1f4; color: var(--ink); }
+#workspace-navigation a.is-current, #workspace-navigation a.is-current:hover { background: var(--accent-soft); color: var(--ink); border-color: var(--accent-line); }
+#workspace-navigation a.is-current:before { background: var(--accent); }
+#workspace-navigation a.is-current .nav-step, #workspace-navigation a.is-done .nav-step { background: var(--accent); color: #fff; }
+#workspace-navigation a:hover { background: #f1f4f6; color: var(--ink); }
+#workspace-navigation .nav-button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 12px 14px;
+  border: 1px solid transparent; border-radius: 10px; background: transparent; box-shadow: none; font-size: 14px; font-weight: 500; text-align: left; cursor: pointer; }
+#workspace-navigation .nav-button:hover { background: #f1f4f6; filter: none; }
+#workspace-navigation .nav-button svg { width: 20px; height: 20px; flex: 0 0 20px; }
+.sidebar-collapsed #workspace-navigation .nav-group { display: none; }
+.sidebar-collapsed #workspace-navigation .nav-button { justify-content: center; padding: 12px; }
+
+/* ---------- Buttons: one clear primary (glass.css uses --accent), quiet secondary ---------- */
+button:disabled, main > section:not(.instruction-section) button:disabled { background: #e5e8ec; color: #4b5563; border-color: #e5e8ec; opacity: 1; }
+.link-button, main > section:not(.instruction-section) button.link-button { background: transparent; color: var(--ink); border: 0; min-height: 36px; padding: 6px 10px; text-decoration: underline; text-underline-offset: 3px; }
+.link-button:hover, main > section:not(.instruction-section) button.link-button:hover { background: var(--accent-soft); color: var(--ink); }
+#outreach-selected, #draft-form button[type="submit"], #send-smtp { min-height: 48px; padding: 12px 22px; font-size: 15px; font-weight: 700; }
+button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent-line); outline-offset: 2px; }
+.card-select input, input[type="checkbox"] { accent-color: var(--accent); }
+.pill { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+
+/* ---------- Step progress ---------- */
+.flow-stepper { list-style: none; width: 100%; box-sizing: border-box; max-width: 1240px; margin: 0 auto 16px; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px;
+  background: #ffffffd9; border: 1px solid var(--line); border-radius: 16px; }
+.flow-stepper[hidden] { display: none; }
+.flow-stepper li { flex: 1 1 170px; display: flex; align-items: center; gap: 8px; }
+.flow-stepper li:after { content: ""; flex: 1; height: 2px; min-width: 12px; border-radius: 2px; background: var(--line); }
+.flow-stepper li:last-child:after { display: none; }
+.flow-stepper li.is-done:after { background: var(--accent); }
+.flow-stepper a { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px; color: var(--muted); text-decoration: none; font-weight: 500; }
+.flow-stepper .step-dot, .welcome-steps .step-dot { width: 30px; height: 30px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  font-size: 14px; font-weight: 700; background: #fff; color: var(--muted); border: 2px solid #c4ced7; box-sizing: border-box; }
+.flow-stepper li.is-current a, .flow-stepper li.is-done a { color: var(--ink); }
+.flow-stepper li.is-current a { font-weight: 700; }
+.flow-stepper li.is-current .step-dot, .flow-stepper li.is-done .step-dot { background: var(--accent); border-color: var(--accent); color: #fff; }
+.flow-stepper li.is-current .step-dot { box-shadow: 0 0 0 4px var(--accent-soft); }
+
+/* ---------- Tip bar ---------- */
+.flow-tip { width: 100%; box-sizing: border-box; max-width: 1240px; margin: 0 auto 16px; display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 14px; }
+.flow-tip[hidden] { display: none; }
+.flow-tip p { margin: 0; flex: 1; color: var(--ink); font-size: 14px; line-height: 1.5; }
+.flow-tip .tip-icon { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--accent); }
+.step-intro { margin: 8px 0 20px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+
+/* ---------- Step 1: brand cards ---------- */
+.brand-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin-bottom: 20px; }
+main > section:not(.instruction-section) button.brand-card { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 150px;
+  padding: 18px; text-align: left; border-radius: 16px; background: #fff; color: var(--ink); border: 2px solid var(--line); box-shadow: none; font-weight: 400; }
+main > section:not(.instruction-section) button.brand-card:hover { background: var(--accent-soft); border-color: var(--accent-line); }
+main > section:not(.instruction-section) button.brand-card.is-selected { background: var(--accent-soft); border-color: var(--accent); }
+.brand-card strong { font-size: 17px; }
+.brand-card .brand-product { font-size: 14px; color: var(--muted); }
+.brand-card .brand-state { margin-top: auto; font-size: 13px; font-weight: 700; color: var(--accent-hover); }
+.brand-card .brand-initial { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; background: var(--accent); color: #fff; }
+main > section:not(.instruction-section) button.brand-card-new { align-items: center; justify-content: center; border-style: dashed; border-color: #c4ced7; }
+.brand-card-new .brand-plus { font-size: 28px; line-height: 1; color: var(--accent); }
+
+/* ---------- Step 2: source switch ---------- */
+.source-switch { display: inline-flex; flex-wrap: wrap; gap: 6px; padding: 4px; margin: 0 0 18px; border-radius: 12px; background: #eef1f4; }
+.source-switch a { min-height: 40px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 9px; color: var(--ink); text-decoration: none; font-size: 14px; font-weight: 600; }
+.source-switch a:hover { background: #fff; }
+.source-switch a.is-current { background: #fff; color: var(--ink); box-shadow: 0 1px 4px #17202a1f; outline: 2px solid var(--accent-line); }
+#discover .source-switch { margin-top: 16px; }
+
+/* ---------- Step 4 ---------- */
+#send #smtp-panel { margin-top: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+#send #smtp-panel > summary { font-weight: 700; }
+
+/* ---------- Previous / next bar: part of the page, never over the content ---------- */
+.workflow-pagination { position: static !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  background: transparent !important; border: 0 !important; border-top: 1px solid var(--line) !important; border-radius: 0 !important; padding: 16px 0 0 !important; }
+.workflow-pagination[hidden] { display: none !important; }
+
+/* ---------- Settings: appearance ---------- */
+.settings-card { margin: 18px 0 8px; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+.settings-card h3 { margin: 0 0 4px; }
+.appearance-row { display: flex; flex-wrap: wrap; gap: 24px; align-items: stretch; }
+.appearance-row > div:first-child { flex: 1 1 320px; }
+.theme-swatches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+main > section:not(.instruction-section) button.theme-swatch { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 12px; border-radius: 12px;
+  background: #fff; color: var(--ink); border: 2px solid var(--line); font-size: 14px; font-weight: 600; box-shadow: none; }
+main > section:not(.instruction-section) button.theme-swatch:hover { background: #f6f8fa; }
+main > section:not(.instruction-section) button.theme-swatch[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.swatch-dot { width: 20px; height: 20px; flex: none; border-radius: 50%; }
+[data-theme-choice="forest"] .swatch-dot { background: #2f6a5c; }
+[data-theme-choice="indigo"] .swatch-dot { background: #4338ca; }
+[data-theme-choice="ocean"] .swatch-dot { background: #1d4ed8; }
+[data-theme-choice="plum"] .swatch-dot { background: #7e22ce; }
+[data-theme-choice="coral"] .swatch-dot { background: #c2410c; }
+[data-theme-choice="graphite"] .swatch-dot { background: #334155; }
+.theme-preview { flex: 1 1 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 18px; border-radius: 14px; background: #f4f6f8; }
+.theme-preview .preview-button { min-height: 40px; display: inline-flex; align-items: center; padding: 0 18px; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 600; }
+.settings-subhead { margin: 26px 0 8px; }
+
+/* ---------- Welcome dialog ---------- */
+.welcome-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: #17202a73; }
+.welcome-backdrop[hidden] { display: none; }
+.welcome-card { width: 640px; max-width: 100%; max-height: calc(100dvh - 32px); overflow: auto; box-sizing: border-box; padding: 28px;
+  border-radius: 20px; background: #fff; box-shadow: 0 20px 48px #17202a40; color: var(--ink); display: flex; flex-direction: column; gap: 18px; }
+.welcome-head { display: flex; align-items: center; gap: 16px; }
+.welcome-head h2 { margin: 0; font-size: 26px; letter-spacing: -.5px; }
+.welcome-head p { margin: 4px 0 0; color: var(--muted); }
+.welcome-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 10px; }
+.welcome-steps li { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 12px; background: var(--accent-soft); }
+.welcome-steps .step-dot { background: var(--accent); border-color: var(--accent); color: #fff; }
+.welcome-steps small { font-size: 13px; color: #33404d; }
+.welcome-note { margin: 0; padding: 12px 14px; border-radius: 12px; background: #f4f6f8; font-size: 14px; line-height: 1.6; color: #33404d; }
+.welcome-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+#welcome-status:empty { display: none; }
+
+/* ---------- Tour card and help button ---------- */
+.tour-card { position: fixed; right: 24px; top: 20px; z-index: 40; width: 340px; max-width: calc(100vw - 48px); box-sizing: border-box; padding: 18px;
+  border-radius: 16px; background: #fff; border: 1px solid var(--line); box-shadow: 0 12px 32px #17202a2e; color: var(--ink); display: flex; flex-direction: column; gap: 10px; }
+.tour-card[hidden] { display: none; }
+.tour-card p { margin: 0; font-size: 14px; line-height: 1.6; color: #33404d; }
+.tour-top { display: flex; align-items: center; gap: 8px; }
+.tour-top .hint { margin: 0; font-weight: 600; }
+.icon-button { margin-left: auto; width: 36px; min-height: 36px; padding: 0; border-radius: 8px; background: transparent; color: var(--ink); font-size: 20px; }
+.icon-button:hover { background: #f1f4f6; }
+.tour-dots { display: flex; gap: 6px; }
+.tour-dots span { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.tour-dots span.is-on { background: var(--accent); }
+.tour-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.help-fab { position: fixed; right: 24px; bottom: 24px; z-index: 30; width: 56px; height: 56px; min-height: 56px; padding: 0; border-radius: 50%;
+  font-size: 24px; font-weight: 700; box-shadow: 0 6px 20px #17202a33; }
+.help-fab[hidden] { display: none; }
+
+@media (max-width: 700px) {
+  #workspace-navigation .nav-group { display: none; }
+  #workspace-navigation .nav-label .nav-hint { display: none; }
+  #workspace-navigation .nav-button { min-height: 40px; padding: 10px 6px; justify-content: center; font-size: 11px; }
+  .flow-stepper .step-name { font-size: 13px; }
+  .theme-swatches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tour-card { right: 12px; top: auto; bottom: 12px; }
+  .help-fab { right: 16px; bottom: 16px; }
+}
+
+main { padding-bottom: 96px; }
