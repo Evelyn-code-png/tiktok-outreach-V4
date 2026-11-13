@@ -39,6 +39,47 @@
   };
   const tipsOn = () => store.get('outreach-tips') !== 'off';
 
+  // ---------- Owl buddy and progress cheer ----------
+  const BUDDY = {
+    brand: [['Hoot! Let’s start with the ', 'brand'], [' you’re promoting. Pick one below or add a new one.']],
+    discover: [['Great pick! Now find the ', 'creators'], [' who feel like a good fit for your brand.']],
+    contacts: [['Great pick! Now tick the ', 'creators'], [' who feel like a good fit. I’ll check their emails for you.']],
+    compose: [['Almost there! Make the ', 'email'], [' sound like you. $name becomes each creator’s name.']],
+    send: [['Last look! Read each email, then hit ', 'Send'], ['. You’ve got this.']]
+  };
+  const header = document.querySelector('.workspace-header');
+  const buddy = document.createElement('div');
+  buddy.className = 'owl-buddy'; buddy.hidden = true;
+  const buddyOwl = document.createElement('span'); buddyOwl.className = 'owl-body'; buddyOwl.setAttribute('aria-hidden', 'true');
+  const bubble = document.createElement('p'); bubble.className = 'bubble'; bubble.setAttribute('aria-live', 'polite');
+  buddy.append(buddyOwl, bubble);
+  header?.firstElementChild?.append(buddy);
+  const cheer = document.createElement('span');
+  cheer.className = 'cheer'; cheer.hidden = true;
+  const cheerText = document.createElement('span');
+  const cheerBar = document.createElement('span'); cheerBar.className = 'bar'; cheerBar.setAttribute('aria-hidden', 'true');
+  const cheerFill = document.createElement('i'); cheerBar.append(cheerFill);
+  cheer.append(cheerText, cheerBar);
+  const localBadge = document.querySelector('.workspace-local');
+  localBadge?.after(cheer);
+  let finished = false;
+  function setCheer(done) {
+    cheerText.textContent = done >= 4 ? '4 of 4 done · You did it!' : done ? done + ' of 4 done · Nice work!' : 'Let’s go!';
+    cheerFill.style.width = Math.max(6, done * 25) + '%';
+  }
+  function updateBuddy(page, step) {
+    const lines = BUDDY[page];
+    buddy.hidden = !lines || !tipsOn();
+    if (lines) {
+      const [[lead, key], [tail]] = lines;
+      const strong = document.createElement('b'); strong.textContent = key;
+      bubble.replaceChildren(document.createTextNode(lead), strong, document.createTextNode(tail));
+    }
+    cheer.hidden = !step;
+    if (localBadge) localBadge.hidden = !!step;
+    if (step) setCheer(finished && step === 4 ? 4 : step - 1);
+  }
+
   function updateProgress() {
     const page = currentPage();
     const step = STEP_OF[page] || 0;
@@ -59,8 +100,52 @@
     const text = TIPS[page];
     tip.hidden = !text || !tipsOn();
     if (text) { byId('flow-tip-title').textContent = text[0]; byId('flow-tip-text').textContent = text[1]; }
+    if (page !== 'send') finished = false;
+    updateBuddy(page, step);
     if (tour.open) renderTour();
   }
+
+  // ---------- Send celebration (fires only after Gmail accepted at least one email) ----------
+  const CONFETTI = ['#f59e0b', '#ec4899', '#0ea5e9', '#8b5cf6', '#22c55e', '#f43f5e'];
+  let celebration = null;
+  function celebrate(result) {
+    const accepted = Number(result?.accepted) || 0;
+    if (!accepted) return;
+    finished = true;
+    celebration?.remove();
+    const card = document.createElement('div');
+    card.className = 'celebrate'; card.setAttribute('role', 'status');
+    for (let i = 0; i < 28; i++) {
+      const bit = document.createElement('i');
+      bit.className = 'confetti'; bit.setAttribute('aria-hidden', 'true');
+      bit.style.left = (i * 3.6) + '%';
+      bit.style.background = CONFETTI[i % CONFETTI.length];
+      bit.style.animationDelay = (-(i % 7) * 0.3) + 's';
+      card.append(bit);
+    }
+    const owl = document.createElement('span'); owl.className = 'owl-body'; owl.setAttribute('aria-hidden', 'true');
+    const textBox = document.createElement('div');
+    const title = document.createElement('h3');
+    title.textContent = 'Woohoo! ' + accepted + (accepted === 1 ? ' email is' : ' emails are') + ' on their way';
+    const line = document.createElement('p');
+    line.textContent = 'Replies will show up in your Delivery log.';
+    const stats = document.createElement('div'); stats.className = 'stats';
+    const failed = Number(result?.failed_or_unknown) || 0, skipped = Number(result?.skipped) || 0;
+    const brand = byId('brand-name')?.value.trim();
+    for (const words of [accepted + ' sent', failed + ' need review', skipped + ' skipped', brand].filter(Boolean)) {
+      const chip = document.createElement('span'); chip.textContent = words; stats.append(chip);
+    }
+    textBox.append(title, line, stats);
+    const close = document.createElement('button');
+    close.type = 'button'; close.className = 'secondary close'; close.textContent = 'Close';
+    close.addEventListener('click', () => { card.remove(); celebration = null; });
+    card.append(owl, textBox, close);
+    const head = byId('send')?.querySelector('.section-head');
+    if (head) head.after(card); else byId('send')?.prepend(card);
+    celebration = card;
+    updateProgress();
+  }
+  window.addEventListener('outreach:sent', e => celebrate(e.detail));
   function setTips(on) {
     store.set('outreach-tips', on ? 'on' : 'off');
     byId('tips-toggle').checked = on;
@@ -217,5 +302,5 @@
   window.addEventListener('hashchange', updateProgress);
   updateProgress();
   if (store.get('outreach-welcome-seen') !== '1') openWelcome();
-  window.OutreachGuide = { openWelcome, openTour, closeTour, applyTheme };
+  window.OutreachGuide = { openWelcome, openTour, closeTour, applyTheme, celebrate };
 })();

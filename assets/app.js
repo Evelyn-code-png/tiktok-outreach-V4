@@ -212,7 +212,7 @@ async function watchJob(id){
  await refreshRuns();await refreshJobs();$('refresh-history').click();
  const runId=job.result?.run_id||job.run_id;
  if(runId){try{await loadRun(runId);$('run-select').value=runId;}catch(e){if(e.httpStatus!==404)throw e;}}
- if(job.kind==='send'){const view=window.OutreachSendFeedback.describe(job);notice(view.title+' — '+view.message,['error','warning'].includes(view.tone));}
+ if(job.kind==='send'){const view=window.OutreachSendFeedback.describe(job);notice(view.title+' — '+view.message,['error','warning'].includes(view.tone));if(Number.isInteger(job.result?.accepted)&&job.result.accepted>0)window.dispatchEvent(new CustomEvent('outreach:sent',{detail:job.result}));}
  else if(job.status==='completed')notice('Task completed');
  else notice(job.error||'task stopped; completed results were preserved',true);
  return job;
