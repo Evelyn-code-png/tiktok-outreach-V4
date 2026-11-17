@@ -41,7 +41,7 @@ A new campaign follows four steps, shown in the sidebar and in the progress bar 
 
 **Delivery log** and **Settings** sit under Tools. Settings holds account connections, the theme color (it also recolors the owl logo), and the step-tip switch. Navigation itself does not run a search or send email.
 
-Each step has its own icon and color, the owl in the header gives a one-line hint for the current step (hidden when step tips are off), and a short celebration card appears on the send page only after Gmail accepts at least one email.
+Each step has its own icon and color, the owl in the header gives a one-line hint for the current step (hidden when step tips are off), and a short celebration card appears on the send page only after Gmail accepts at least one email. In Settings, Owl outfit dresses the owl logo and owl hints: headphones, beret, bow tie and striped scarf follow the theme color, while the grad cap and the holiday outfits (reindeer, Christmas scarf) keep fixed colors. The choice is stored only in this browser.
 
 ## Which accounts are needed?
 
