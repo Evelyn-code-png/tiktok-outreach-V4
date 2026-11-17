@@ -1,0 +1,5 @@
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+COPY scripts/ai_gateway.py /app/ai_gateway.py
+CMD ["python", "ai_gateway.py", "--host", "0.0.0.0"]

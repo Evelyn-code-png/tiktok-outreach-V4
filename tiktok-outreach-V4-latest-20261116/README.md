@@ -1,0 +1,84 @@
+# Outreach V4
+
+A local workspace for finding TikTok creators with EasyKOL, reviewing contacts, preparing editable outreach emails, and tracking Gmail replies.
+
+## Simplified connections
+
+For teammates pulling this repository, see [团队安装与部署步骤](docs/TEAM_QUICKSTART_CN.md). A private member connection file is required for the shared AI service; Git pull does not copy the administrator's credentials.
+
+Google OAuth sending/reply access and an optional team AI gateway are now supported. Team administrators must configure these services before members can connect. See [connection setup](docs/CONNECTION_SETUP_CN.md). SMTP and personal AI keys remain available as fallbacks.
+
+## Download and open
+
+Select **Code → Download ZIP** on this private repository page, then extract the complete folder. Each teammate must first have access to the repository.
+
+**Requirement:** Python 3.10 or newer. No additional Python packages or Codex installation are required to open and use the workspace. If Python is not installed, install it once from [python.org](https://www.python.org/downloads/). On Windows, select **Add python.exe to PATH** during installation.
+
+| Computer | Open after extracting |
+| --- | --- |
+| macOS | Double-click **Open Dashboard.command** |
+| Windows | Double-click **Open Dashboard.bat** |
+| Linux | Run `python3 scripts/dashboard.py --reuse` from the project folder |
+
+Keep the launcher window open while using the workspace. It opens a private local browser page automatically. Closing that window stops the local service. Do not open `assets/index.html` directly.
+
+If macOS reports that the `.command` file is not executable, open Terminal in the extracted folder and run:
+
+```bash
+bash "Open Dashboard.command"
+```
+
+## First use
+
+The first time the workspace opens, a short welcome explains the four steps. Choose **Start the 1-minute tour**, **Load sample data** (three demo creators with `example.com` addresses and a sample brand; nothing is sent), or **Skip**. Reopen it any time from **Tutorial** in the sidebar or the **?** button.
+
+A new campaign follows four steps, shown in the sidebar and in the progress bar at the top of each page:
+
+1. **Brand:** pick a saved brand card or add a new brand. Creator matching and personalized openings use it.
+2. **Creators:** **Search EasyKOL** for new creators, or switch to **My lists and import** to open a saved list, upload a CSV / Excel file, or add a contact by email. Tick the creators you want, then click **Continue with selected**.
+3. **Template:** load a saved template or edit the subject and message, then click **Next: Preview emails**. Preparing a draft does not send it.
+4. **Preview and send:** review each recipient's email, tick the confirmation box, and send.
+
+**Delivery log** and **Settings** sit under Tools. Settings holds account connections, the theme color (it also recolors the owl logo), and the step-tip switch. Navigation itself does not run a search or send email.
+
+Each step has its own icon and color, the owl in the header gives a one-line hint for the current step (hidden when step tips are off), and a short celebration card appears on the send page only after Gmail accepts at least one email.
+
+## Which accounts are needed?
+
+| Feature | Setup |
+| --- | --- |
+| View the interface, import/add contacts, edit manual email drafts | None |
+| Real creator search | Your EasyKOL account email, API key, and sufficient credits |
+| AI creator-fit analysis and personalized opening options | Team AI service URL and access code, or your personal AI API key and model; manual editing remains available |
+| Send directly using Gmail SMTP | Connect Google, or use your sending Gmail and a Gmail app password for SMTP |
+| Automatically sync matching Gmail replies | Google connection with reply access (or SMTP setup), followed by explicit permission in **Delivery log** |
+| Gmail browser sending instructions | An agent capable of following the copied instruction in your signed-in Gmail; copying does not send email |
+
+Your own connected services bill their usage to your own accounts. This download contains no shared EasyKOL credits, AI key, Gmail password, or sender mailbox.
+
+## Reply and open tracking
+
+Optional open/click tracking can now use an independent event receiver while the workspace and mailbox credentials stay local. Configure it under **Account Setup → Open and click tracking**, then use **Delivery log → Sync opens and clicks**. Setup, deployment, and limitations are documented in [打开与点击追踪配置](docs/OPEN_CLICK_TRACKING_CN.md). Each installation needs its own local connection settings; repository updates do not copy access tokens.
+
+Gmail reply tracking matches incoming replies against messages sent from this workspace. It reads relevant messages without deleting mail or marking it read. The app checks periodically while its page is open and visible; **Sync now** is also available after permission. Received replies appear as a creator list with expandable details.
+
+An SMTP success means Gmail accepted the message for sending; it does not guarantee inbox delivery. Open/click tracking is separate and requires a reachable public HTTPS tracking endpoint. It is not enabled merely by downloading or running this local demo, and image blocking or privacy features can affect open tracking.
+
+## Local data and team sharing
+
+This is a **local application**, not a shared cloud workspace. Each teammate has separate contacts, drafts, settings, delivery records, and mailbox permissions. The dashboard listens only on `127.0.0.1`.
+
+Data is stored outside the downloaded source in `~/.config/tiktok-outreach-v3` on macOS/Linux, or the corresponding user-profile location on Windows. The existing `v3` storage name is kept for compatibility with earlier installations. Updating the source does not delete existing local data.
+
+The repository is private. The owner must grant teammates repository access before they can open it or download the project. Do not upload personal settings, contact exports, mail contents, or API keys to this repository.
+
+## Development checks
+
+```bash
+python3 -m unittest discover -s tests -q
+node --test tests/test_send_feedback.cjs
+```
+
+Node is optional and is used only for the JavaScript tests. It is not needed to run the application.
+
+See [QUICKSTART.md](QUICKSTART.md) for a short walkthrough and [WORKFLOW_ADDITIONS.md](WORKFLOW_ADDITIONS.md) for implementation and restoration notes.

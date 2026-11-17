@@ -1,0 +1,50 @@
+# 组员 pull 后如何使用完整功能
+
+本项目仍在每个人自己的电脑运行。团队仅托管 AI 网关：OpenAI key 留在网关，Gmail 授权和联系人留在各自电脑。团队 AI 已部署至 `https://outreach-team-ai.onrender.com`（Render Free）。组员仍需管理员私下分发的独立访问码；无需个人 OpenAI key。
+
+## 组员操作
+
+1. 拉取 `codex/simplify-connections` 分支（尚未合并 main），安装 Python 3.10+。已有副本运行 `git fetch origin`、`git switch codex/simplify-connections`、`git pull`。
+2. 从管理员私下领取分配给你的 `team-connection.json`，放在项目根目录。不要提交这个文件；其中的访问码会消耗团队 AI 额度。
+3. 双击 `Setup Team.command`（Mac）或 `Setup Team.bat`（Windows）；Linux 运行 `python3 scripts/team_setup.py`。这会把团队 Google 客户端、AI URL 和成员访问码写入本机私有配置目录，不会导入管理员的 Gmail 授权或 OpenAI key。
+4. 双击 `Open Dashboard.command` / `.bat`。在 Account Setup 点击 Connect Google，选择已加入测试名单的**自己的邮箱**；要看回复则勾选回复权限。
+5. EasyKOL 未由管理员分配时，在 Account Setup 填入自己的 EasyKOL 凭据。仅有 Google / AI 配置不代表能检索真实 KOL。
+6. 正常检索、查看匹配理由、生成草稿；发送前检查收件人和正文。Delivery log 中同意回复追踪。所有邮件仍需手动确认发送。
+
+个人 Gmail 权限不能由管理员代为授权。学校 Google 账号也可能受学校管理员策略限制；若禁止此应用，需要使用已获准的个人 Gmail。测试模式下 Google 可能要求定期重新授权。
+
+## 管理员部署 AI
+
+仓库中的 `Dockerfile.ai` 只复制网关脚本，不包含本机配置、Gmail 令牌或 API key。`render.yaml` 按管理员选择提供 Free 服务，无持久化磁盘。只需 Hobby 工作区，不需要升级 Pro 工作区。免费实例闲置后会休眠，重启会清空每日调用计数；OpenAI 调用仍消耗已充值余额。
+
+在 Render 连接你有权限的 Git 仓库及包含这些修改的分支，以 Blueprint 部署。秘密环境变量：
+
+- `OPENAI_API_KEY`：团队管理员的有效 key，仅存在 Render 秘密配置。
+- `OPENAI_MODEL`：已验证可用的模型名称。
+- `AI_GATEWAY_TOKENS`：每名成员一个随机访问码，以逗号分隔。每个码建议使用 `secrets.token_urlsafe(32)` 生成。
+- 默认每个访问码每天 20 次请求，失败的上游请求也计数；可调整 `AI_DAILY_REQUEST_LIMIT`。这不是美元预算上限。
+
+部署后 `/healthz` 应返回 `{"status":"ok"}`，但还需要带访问码真实生成测试才能确认 OpenAI 连接。测试完成后才向组员发放 HTTPS 服务地址。Render 免费服务不能保存本项目的 SQLite 额度账本，重启会重置计数，而且闲置会休眠；当前配置经管理员确认采用免费临时磁盘，调用计数仅作为轻量限制，不保证跨重启的每日限额。
+
+每位组员的连接文件结构如下（占位值不能直接使用）：
+
+```json
+{
+  "version": 1,
+  "google_client": {"installed": {"client_id": "TEAM_CLIENT.apps.googleusercontent.com", "client_secret": "DESKTOP_CLIENT_VALUE"}},
+  "ai_gateway_url": "https://YOUR-SERVICE.onrender.com",
+  "ai_gateway_token": "MEMBER_SPECIFIC_RANDOM_ACCESS_CODE"
+}
+```
+
+Google 配置必须使用团队 Desktop 客户端；原始下载 JSON 的 `installed` 部分可用于上述字段。这不是任何人的 Gmail refresh token。若经账号所有者批准分配 EasyKOL 凭据，可另加 `easykol_email` 与 `easykol_key`；不要擅自共享个人凭据或将它们写进 Git。
+
+不要发送整个个人配置目录。不要添加 `openai_key`、`gmail_app_password` 或 `refresh_token`；导入器会拒绝这些字段。团队连接文件被 Git 忽略；Git pull 只更新程序，成员配置保存在代码目录外。
+
+## 当前验证范围
+
+2026-10-19：Render Free 已成功构建并运行。用全新隔离用户目录安装组员配置，在没有个人 OpenAI key 的情况下，云端匹配分析与三个邮件开场段落均生成成功；共享 EasyKOL 凭据通过额度查询。五个独立访问码均通过认证检查，无访问码的请求被拒绝。四个组员邮箱已加入 Google 测试名单。尚未在组员实际电脑完成端到端检索、个人 Gmail 授权及邮件投递测试。
+
+免费实例冷启动可能超过 50 秒。录制前先打开 https://outreach-team-ai.onrender.com/healthz ，等出现 `status: ok` 再调用 AI。不要快速重复点击生成，以免产生重复用量。
+
+部署仓库为私有的 `Xiaoyi-Kuang1/outreach-team-ai`，只保存网关脚本与部署配置；组员应用仍在原仓库。Google Gmail 授权及回复内容不经过 AI 网关。
