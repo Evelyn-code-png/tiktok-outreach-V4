@@ -475,6 +475,18 @@ class DashboardHTTPTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code,400)
         self.assertIn('Account Setup',json.load(ctx.exception)['error'])
 
+    def test_owl_outfit_assets_are_served_and_linked(self):
+        for path,mime in [('/outfits.js','text/javascript'),('/outfits.css','text/css')]:
+            with self.request(path) as r:
+                self.assertIn(mime,r.headers['Content-Type'])
+                body=r.read().decode()
+                self.assertTrue(body)
+                self.assertFalse(any('\u4e00'<=c<='\u9fff' for c in body))
+        with self.request('/') as r:
+            html=r.read().decode()
+            self.assertIn('/outfits.js',html)
+            self.assertIn('/outfits.css',html)
+
     def test_engagement_assets_are_local_and_english(self):
         for path,mime in [('/engagement.js','text/javascript'),('/engagement.css','text/css')]:
             with self.request(path) as r:
