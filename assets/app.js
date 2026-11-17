@@ -73,7 +73,7 @@ function creatorCard(r){
  return card;
 }
 function syncContactViewButtons(){for(const [id,view] of [['view-cards','cards'],['view-table','table']]){const b=$(id),active=contactView===view;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));}}
-function selectionCount(){invalidatePreview('Recipient selection changed. Generate a new draft.');$('selection-count').textContent=`Selected ${selected.size} unique emails`;$('confirm-send').checked=false;updateRecipientHandoff();saveWorkspace();}
+function selectionCount(){invalidatePreview('Recipient selection changed. Generate a new draft.');$('selection-count').textContent=`Selected ${selected.size} unique emails`;$('confirm-send').checked=false;updateRecipientHandoff();saveWorkspace();window.syncCreatorLayout?.();}
 
 function updateRecipientHandoff(){
  $('outreach-selected').textContent=selected.size?`Continue with ${selected.size} selected →`:'Continue with selected →';
@@ -95,6 +95,7 @@ async function refreshRuns(){const d=await api('/api/runs'),keep=$('run-select')
 
 function filteredContacts(){const q=$('contact-filter').value.trim().toLowerCase();const rows=(activeRun?.contacts||[]).filter(r=>(!$('only-email').checked||r.email)&&(!q||[r.name,r.username,r.email,r.region,r.source].some(v=>String(v||'').toLowerCase().includes(q))));return window.OutreachEngagement?.sort(rows)||rows;}
 function renderContacts(){
+ window.syncCreatorLayout?.();
  const root=$('contacts-result');root.replaceChildren();syncContactViewButtons();root.className=contactView==='cards'?'creator-grid cards-view':'table-wrap table-view';const matches=filteredContacts();
  const pages=Math.max(1,Math.ceil(matches.length/PAGE_SIZE));contactPage=Math.min(contactPage,pages-1);
  const rows=matches.slice(contactPage*PAGE_SIZE,(contactPage+1)*PAGE_SIZE);
@@ -373,7 +374,7 @@ refreshJobs().catch(e=>notice(e.message,true));
   }
   document.getElementById('workspace-page-title').textContent=continuous?'New campaign':pages[page][0];
   document.getElementById('workspace-page-description').textContent=continuous?'Four steps: choose a brand, pick creators, confirm the email, then preview and send.':pages[page][1];
-  document.title=pages[page][0]+' · Outreach V4';
+  document.title=pages[page][0]+' · Outreach';
   const order=Object.keys(stepOf),index=order.indexOf(page),previous=continuous?order[index-1]:null,next=continuous?order[index+1]:null;
   $('workflow-pagination').hidden=!continuous;
   $('workflow-previous').disabled=!previous;$('workflow-next').disabled=!next;
