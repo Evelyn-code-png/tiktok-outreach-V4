@@ -43,6 +43,8 @@ A new campaign follows four steps, shown in the sidebar and in the progress bar 
 
 Each step has its own icon and color, the owl in the header gives a one-line hint for the current step (hidden when step tips are off), and a short celebration card appears on the send page only after Gmail accepts at least one email.
 
+**Owl desktop pet (Windows).** Double-click `Owl Pet.bat` to start a small owl that hides at the right edge of the screen with only its head peeking out. It breathes, blinks and now and then leans out to look around. Click it and it hops out and opens the workspace in your browser, starting the dashboard first if it is not running (no console window). Drag it anywhere; drop it near the left or right edge to hide it there. After 20 seconds without use it hops back to the edge. Right-click for theme color, owl outfit and Quit; quitting the owl also stops a dashboard that the owl started. The owl needs Python 3.10+ with Tkinter (included in the standard Windows installer); its settings are saved in `owl-pet.json` in the workspace data folder. Sprites are in `assets/pet/`.
+
 ## Which accounts are needed?
 
 | Feature | Setup |
