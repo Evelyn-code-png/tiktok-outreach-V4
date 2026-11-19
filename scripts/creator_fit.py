@@ -12,11 +12,14 @@ import urllib.request
 import engagement as e
 import outreach as o
 import personalization as p
+import sensitive_tags as st
 import workspace as w
 
 LOCK = threading.RLock()
 REQUEST_LOCKS = {}
 MAX_AGE = 86400
+# Bump when the facts sent to the AI change, so older cached analyses regenerate.
+FACT_POLICY = 2
 VERDICTS = ('strong', 'potential', 'limited', 'insufficient')
 PROFILE_FIELDS = ('description', 'one_line_pitch', 'ai_tags', 'followers', 'region', 'language', 'average_play_count')
 
@@ -78,7 +81,7 @@ def fingerprint(creator, brand, profile):
     facts = clean_profile(profile, creator)
     brief = {k: brand.get(k) for k in ('id', 'name', 'product', 'goal', 'offer', 'language', 'regions',
                                      'content_keywords', 'min_followers', 'max_followers')}
-    return hashlib.sha256(json.dumps({'creator': facts, 'list_data': {k:creator.get(k) for k in ('profile_url','followers','region','language')}, 'brand': brief}, sort_keys=True).encode()).hexdigest()
+    return hashlib.sha256(json.dumps({'policy': FACT_POLICY, 'creator': facts, 'list_data': {k:creator.get(k) for k in ('profile_url','followers','region','language')}, 'brand': brief}, sort_keys=True).encode()).hexdigest()
 
 
 def summaries(run, brand):
@@ -94,7 +97,9 @@ def summaries(run, brand):
         status = 'ready' if valid else 'needs_brand' if not brand else 'needs_ai' if not ready else 'stale' if cached else 'not_generated'
         revision = hashlib.sha256(json.dumps([key,brand,model,bool(api_key),creator],sort_keys=True).encode()).hexdigest()[:20]
         result.append({'brief_label': brand['name'] if brand else '', 'revision': revision, 'status': status, 'result': cached['result'] if valid else None,
-                       'generated_at': cached['generated_at'] if valid else None})
+                       'generated_at': cached['generated_at'] if valid else None,
+                       # Shown to the user as inferred information; never sent to the AI.
+                       'inferred_traits': st.split(cached['profile'].get('ai_tags'))[1] if valid else []})
     return result
 
 
@@ -109,6 +114,10 @@ def call_model(creator, brand):
     if not key or not model:
         raise ValueError('AI matching is not connected. Configure an AI API key and model in Account Setup.')
     facts = {field: creator[field] for field in PROFILE_FIELDS if creator.get(field) not in ('', None)}
+    # Inferred gender, race, age, looks and family tags never reach the AI.
+    if 'ai_tags' in facts:
+        facts['ai_tags'] = st.content_only(facts['ai_tags'])
+        if not facts['ai_tags']: del facts['ai_tags']
     if not facts: raise ValueError('No creator profile facts are available for AI matching.')
     source = {'creator_name': creator.get('name'), 'profile_url': creator.get('profile_url'),
               'creator_facts': facts, 'brand': {k: brand.get(k) for k in
@@ -131,6 +140,7 @@ def call_model(creator, brand):
         'Explain the connection between their content and this product, rather than merely repeating follower filters. '
         'Do not claim to have watched posts or invent recent videos, demographics, audience location, engagement, '
         'product usage, reviews, preferences or performance. Creator region is not audience region. '
+        'Never use or guess the creator\'s gender, race, ethnicity, age, appearance or family status as a reason. '
         'Only description, one_line_pitch and ai_tags support content-topic inferences. If these are absent, '
         'use verdict insufficient and clearly state that content alignment cannot be established. '
         'A proposed collaboration angle is a suggestion, not a claim about existing creator posts. '

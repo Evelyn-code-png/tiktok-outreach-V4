@@ -1,5 +1,6 @@
 """Grounded creator-email personalization for the local workspace."""
 import ai_connection
+import sensitive_tags
 import json
 import os
 import urllib.error
@@ -146,6 +147,8 @@ def call_ai(creator, videos, brand):
                                      'one_line_pitch', 'ai_tags', 'followers', 'region',
                                      'language', 'average_play_count')},
               'brand': brand, 'recent_videos': videos[:5]}
+    # Inferred gender, race, age, looks and family tags never reach the AI.
+    source['creator']['ai_tags'] = sensitive_tags.content_only(source['creator']['ai_tags'])
     schema = {
         'type': 'object', 'additionalProperties': False, 'required': ['options'],
         'properties': {'options': {'type': 'array', 'minItems': 3, 'maxItems': 3,
@@ -162,7 +165,8 @@ def call_ai(creator, videos, brand):
             'If no videos are supplied, personalize from the profile description, one-line pitch, and tags without '
             'claiming to have seen a specific post. Never claim to have watched, liked, or understood anything not proven. '
             'Connect one specific content detail to the brand naturally; do not invent demographics, '
-            'performance, product use, or personal opinions.'),
+            'performance, product use, or personal opinions. Never mention or rely on the creator\'s '
+            'gender, race, ethnicity, age, appearance or family status.'),
         'input': json.dumps(source, ensure_ascii=False),
         'text': {'format': {'type': 'json_schema', 'name': 'creator_personalization',
                             'strict': True, 'schema': schema}}}

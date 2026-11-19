@@ -148,3 +148,41 @@ class CreatorFitTests(unittest.TestCase):
             f.generate(self.base);f.generate({**self.base,'regenerate':True})
         self.assertEqual(model.call_count,2)
         self.assertFalse((o.ROOT/'outreach.sqlite').exists())
+
+    def test_inferred_identity_tags_never_reach_the_ai_and_are_shown_labeled(self):
+        self.profile['aiTags']='青年, 女, 白人, 高颜值, 有娃, 美妆护肤, skincare'
+        o.save_json(o.ROOT/'runs'/self.run['id']/'raw-1.json',{'data':[self.profile]})
+        with patch.object(f.urllib.request,'urlopen',return_value=self.response(self.output())) as model:
+            result=f.generate(self.base)
+        sent=json.loads(json.loads(model.call_args.args[0].data)['input'])['creator_facts']
+        self.assertEqual(sent['ai_tags'],'美妆护肤, skincare')
+        for trait in ('青年','女','白人','高颜值','有娃'):
+            self.assertNotIn(trait,sent['ai_tags'])
+        fit=result['snapshot']['creators'][0]['ai_fit']
+        self.assertEqual([t['label'] for t in fit['inferred_traits']],['Young adult','Female','White','Rated attractive','Has children'])
+
+    def test_ai_cannot_cite_a_removed_identity_tag(self):
+        self.profile['aiTags']='女, skincare'
+        o.save_json(o.ROOT/'runs'/self.run['id']/'raw-1.json',{'data':[self.profile]})
+        bad=self.output();bad['reasons']=[{'reason':'She is a woman.','evidence_field':'ai_tags','evidence_quote':'女'}]
+        with patch.object(f.urllib.request,'urlopen',return_value=self.response(bad)):
+            with self.assertRaisesRegex(ValueError,'not supplied'):
+                f.generate(self.base)
+
+    def test_only_identity_tags_means_no_content_evidence(self):
+        self.profile={'aiTags':'男, 黑人, 青年','username':'emma','profileUrl':'https://www.tiktok.com/@emma'}
+        o.save_json(o.ROOT/'runs'/self.run['id']/'raw-1.json',{'data':[self.profile]})
+        out=self.output();out['reasons'][0].update(evidence_field='followers',evidence_quote='68000')
+        with patch.object(f.urllib.request,'urlopen',return_value=self.response(out)) as model,patch.object(p,'fetch_kol_details',return_value=self.profile):
+            result=f.generate(self.base)
+        sent=json.loads(json.loads(model.call_args.args[0].data)['input'])['creator_facts']
+        self.assertNotIn('ai_tags',sent)
+        self.assertEqual(result['snapshot']['creators'][0]['ai_fit']['result']['verdict'],'insufficient')
+
+    def test_personalization_prompt_drops_identity_tags(self):
+        creator={'name':'Emma','profile_url':'https://www.tiktok.com/@emma','ai_tags':'女, 亚裔, 美妆护肤'}
+        with patch.object(p.urllib.request,'urlopen',return_value=self.response({'options':[{'paragraph':'Hi','reason':'r','evidence_url':'https://www.tiktok.com/@emma'}]*3})) as model:
+            try: p.call_ai(creator,[],{'name':'LUMA'})
+            except ValueError: pass
+        sent=json.loads(json.loads(model.call_args.args[0].data)['input'])['creator']
+        self.assertEqual(sent['ai_tags'],'美妆护肤')

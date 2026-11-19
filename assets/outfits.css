@@ -1,0 +1,38 @@
+/* Owl outfits (see outfits.js). Everyday accessories take their colors from the theme. */
+:root {
+  --owl-mid: color-mix(in srgb, var(--accent) 72%, var(--accent-line));
+  --owl-light: color-mix(in srgb, var(--accent-line) 65%, #fff);
+  --owl-fill: #fffdf8;
+}
+
+/* A dressed owl is drawn as inline SVG instead of the CSS mask, and its accessories may extend past the box. */
+.owl-mark.owl-dressed, .owl-body.owl-dressed { position: relative; overflow: visible;
+  background: none !important; -webkit-mask: none !important; mask: none !important; }
+.owl-dressed > svg.owl-art { position: absolute; left: -12.2%; top: -28.4%; width: 124.7%; height: 130.3%;
+  overflow: visible; pointer-events: none; }
+
+.owl-art .oc-owl { fill: var(--accent); }
+.owl-art .oc-fill { fill: var(--owl-fill); }
+.owl-art .oc-acc { fill: var(--accent); }
+.owl-art .oc-mid { fill: var(--owl-mid); }
+.owl-art .oc-light { fill: var(--owl-light); }
+.owl-art .os-acc { stroke: var(--accent); }
+.owl-art .os-mid { stroke: var(--owl-mid); }
+.owl-art .os-light { stroke: var(--owl-light); }
+
+/* Settings card */
+.outfit-settings { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.outfit-group { margin: 14px 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.outfit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px; }
+main > section:not(.instruction-section) button.outfit-option { display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-height: 0; padding: 34px 8px 12px; border-radius: 16px !important; border: 1.5px solid var(--line); background: #fffdf8;
+  color: var(--ink); box-shadow: none; text-align: center; }
+main > section:not(.instruction-section) button.outfit-option:hover { border-color: var(--accent-line); transform: translateY(-1px); }
+main > section:not(.instruction-section) button.outfit-option[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.outfit-option .outfit-preview { width: 52px; height: 72px; margin-bottom: 10px; }
+.outfit-option strong { font-size: 14px; }
+.outfit-option .outfit-note { font-size: 12px; color: var(--muted); font-weight: 400; }
+
+@media (max-width: 700px) {
+  .outfit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
