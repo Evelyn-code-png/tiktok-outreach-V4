@@ -198,6 +198,8 @@ class OwlPet:
 
     def tick(self):
         """Gentle breathing while resting, and leaning out a little when the mouse is over the docked owl."""
+        if QUIT_REQUESTED.is_set():  # turned off from the workspace Settings
+            return self.quit(stop_server=False)
         self.bob = 2.0 * math.sin(self.root.tk.call('clock', 'milliseconds') / 700)
         if self.state == 'docked':
             target = int(self.w * 0.25) if self.hover else 0
@@ -427,10 +429,10 @@ class OwlPet:
         self.load_frames()
         self.show(self.peek_frame() if self.state == 'docked' else 'idle')
 
-    def quit(self):
+    def quit(self, stop_server=True):
         self.config.update(side=self.side, y=int(self.y))
         save_config(self.config)
-        if self.server and self.server.poll() is None:
+        if stop_server and self.server and self.server.poll() is None:
             self.server.terminate()  # stop the dashboard only if the owl started it
         self.root.destroy()
 
@@ -438,12 +440,49 @@ class OwlPet:
         self.root.mainloop()
 
 
+QUIT_REQUESTED = threading.Event()
+
+
+def handle_command(text):
+    """Commands the workspace sends over the single-instance socket."""
+    command = text.strip().lower()
+    if command == 'ping':
+        return b'owl'
+    if command == 'quit':
+        QUIT_REQUESTED.set()
+        return b'bye'
+    return b'?'
+
+
+def serve_commands(lock):
+    lock.listen(4)
+
+    def serve():
+        while True:
+            try:
+                conn, _ = lock.accept()
+            except OSError:
+                return
+            with conn:
+                try:
+                    conn.settimeout(2)
+                    conn.sendall(handle_command(conn.recv(32).decode('ascii', 'ignore')))
+                    conn.recv(1)  # let the caller close first, so this port is not left in TIME_WAIT
+                except OSError:
+                    pass
+    threading.Thread(target=serve, daemon=True).start()
+
+
 def main():
     lock = socket.socket()
+    if os.name != 'nt':
+        # Allows a restart while old connections linger; Linux and macOS still refuse a second listener.
+        lock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
         lock.bind(('127.0.0.1', LOCK_PORT))  # one owl at a time
     except OSError:
         return
+    serve_commands(lock)
     OwlPet().run()
 
 
