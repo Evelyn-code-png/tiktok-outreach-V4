@@ -344,7 +344,7 @@ refreshJobs().catch(e=>notice(e.message,true));
   compose:['Confirm your email template','Adjust the wording. Each email is personalized for its creator.'],
   send:['Preview and send','Read each email, confirm, then send.'],
   history:['Delivery log','Keep track of deliveries, replies and campaign activity.'],
-  responsible:['Responsible AI','How the AI is tested, and the guardrails that keep it honest.'],
+  responsible:['Risks, Guardrails & Responsible AI','How the AI is tested, and the guardrails that keep it honest.'],
   settings:['Settings','Accounts, appearance and help.']
  };
  const stepOf={brand:1,discover:2,contacts:2,compose:3,send:4};
