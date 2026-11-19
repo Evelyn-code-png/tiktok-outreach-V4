@@ -34,7 +34,7 @@
   };
   const currentPage = () => {
     const hash = location.hash.slice(1);
-    if (Object.hasOwn(STEP_OF, hash) || hash === 'history' || hash === 'settings') return hash;
+    if (Object.hasOwn(STEP_OF, hash) || hash === 'history' || hash === 'responsible' || hash === 'settings') return hash;
     return 'brand';
   };
   const tipsOn = () => store.get('outreach-tips') !== 'off';
