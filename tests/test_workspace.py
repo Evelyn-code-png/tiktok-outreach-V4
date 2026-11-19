@@ -489,4 +489,19 @@ class DashboardHTTPTests(unittest.TestCase):
             self.assertIn('Creator details',html)
             self.assertFalse(any('\u4e00'<=c<='\u9fff' for c in html))
 
+    def test_responsible_ai_page_is_served_linked_and_inline_style_free(self):
+        for path,mime in [('/responsible.js','text/javascript'),('/responsible.css','text/css')]:
+            with self.request(path) as r:
+                self.assertIn(mime,r.headers['Content-Type'])
+                self.assertTrue(r.read().decode())
+        with self.request('/') as r:
+            html=r.read().decode()
+        self.assertIn('/responsible.js',html);self.assertIn('/responsible.css',html)
+        self.assertIn('href="#responsible"',html)
+        start=html.index('<section hidden id="responsible">');section=html[start:html.index('</section>',start)]
+        self.assertNotIn('style=',section)
+        self.assertFalse(any('\u4e00'<=c<='\u9fff' for c in section))
+        for model in ('Sonnet 5.5','GPT-6.1 Terra','Opus 5.5','GPT-6.1 Sol','Fable 5.2'):self.assertIn(model,section)
+        self.assertIn('Case Study 2',section)
+
 if __name__=='__main__':unittest.main()
