@@ -41,5 +41,13 @@ class OwlPetTests(unittest.TestCase):
         self.assertIsNone(self.pet.running_dashboard_url())
 
 
+    def test_workspace_can_ping_and_close_the_owl(self):
+        self.pet.QUIT_REQUESTED.clear()
+        self.assertEqual(self.pet.handle_command('ping\n'), b'owl')
+        self.assertFalse(self.pet.QUIT_REQUESTED.is_set())
+        self.assertEqual(self.pet.handle_command('quit'), b'bye')
+        self.assertTrue(self.pet.QUIT_REQUESTED.is_set())
+        self.assertEqual(self.pet.handle_command('rm -rf'), b'?')
+
 if __name__ == '__main__':
     unittest.main()

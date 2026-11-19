@@ -475,6 +475,24 @@ class DashboardHTTPTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code,400)
         self.assertIn('Account Setup',json.load(ctx.exception)['error'])
 
+    def test_desktop_owl_assets_are_served_and_linked(self):
+        for path,mime in [('/pet-toggle.js','text/javascript'),('/pet-toggle.css','text/css')]:
+            with self.request(path) as r:
+                self.assertIn(mime,r.headers['Content-Type'])
+                body=r.read().decode()
+                self.assertTrue(body)
+                self.assertFalse(any('\u4e00'<=c<='\u9fff' for c in body))
+        with self.request('/') as r:
+            html=r.read().decode()
+            self.assertIn('/pet-toggle.js',html);self.assertIn('/pet-toggle.css',html)
+
+    def test_desktop_owl_control_requires_the_workspace_token(self):
+        with self.assertRaises(urllib.error.HTTPError) as ctx:self.request('/api/pet',{'action':'status'},{'X-Outreach-Token':'wrong'})
+        self.assertIn(ctx.exception.code,(401,403))
+        with patch('pet_control.running',return_value=False):
+            with self.request('/api/pet',{'action':'status'}) as r:
+                self.assertEqual(json.loads(r.read())['running'],False)
+
     def test_engagement_assets_are_local_and_english(self):
         for path,mime in [('/engagement.js','text/javascript'),('/engagement.css','text/css')]:
             with self.request(path) as r:
