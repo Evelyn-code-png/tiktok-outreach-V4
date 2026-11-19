@@ -1,0 +1,46 @@
+/* Responsible AI page (Tools > Responsible AI). Uses the workspace theme variables. */
+#responsible .r-intro { color: var(--muted); margin: 18px 0 0; max-width: 760px; line-height: 1.6; }
+#responsible .r-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 20px 0 16px; }
+#responsible .r-tabs { display: flex; gap: 6px; background: #f3f0e8; border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+#responsible button.r-tab { min-height: 0; border: 0; background: transparent; box-shadow: none; border-radius: 999px !important;
+  padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--muted); }
+#responsible button.r-tab[aria-selected="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+#responsible .r-nav { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+#responsible button.r-arrow { min-height: 0; width: 38px; height: 38px; padding: 0; border-radius: 50% !important; border: 1px solid var(--line);
+  background: #fff; color: var(--ink); box-shadow: none; font-size: 17px; display: grid; place-items: center; }
+#responsible button.r-arrow.r-next { background: var(--accent); border-color: var(--accent); color: #fff; }
+#responsible button.r-arrow:disabled { opacity: .35; cursor: default; }
+#responsible .r-card { background: #f8f6f0; border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; }
+#responsible .r-card[hidden] { display: none; }
+#responsible .r-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+#responsible .r-eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+#responsible h3 { margin: 6px 0 4px; font-size: 17px; font-weight: 650; color: var(--ink); }
+#responsible .r-sub { color: var(--muted); font-size: 13px; margin: 0; }
+#responsible .r-chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  padding: 5px 12px 5px 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+#responsible .r-chip i { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center;
+  font-style: normal; font-size: 12px; }
+#responsible .r-scroll { overflow-x: auto; margin-top: 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+#responsible table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 13px; }
+#responsible th { background: #fbfaf6; text-align: left; font-weight: 600; color: var(--ink); padding: 11px 12px; border-bottom: 1px solid var(--line);
+  font-size: 12.5px; vertical-align: bottom; }
+#responsible th small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; margin-top: 2px; }
+#responsible .r-past { background: #faf8f3; }
+#responsible td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; color: #3d4248; line-height: 1.45; }
+#responsible tr:last-child td { border-bottom: 0; }
+#responsible td strong { display: block; color: var(--ink); font-weight: 600; margin-bottom: 2px; }
+#responsible .r-b { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em; border-radius: 999px; padding: 3px 9px; margin-bottom: 5px; }
+#responsible .r-pass { background: var(--accent-soft); color: var(--accent); }
+#responsible .r-fail { background: #fbe9ea; color: #b42335; }
+#responsible .r-part { background: #fbf0dc; color: #9a5b05; }
+#responsible .r-info { background: #e8f0fb; color: #2b5d9c; }
+#responsible .r-take { display: flex; gap: 14px; align-items: center; margin-top: 16px; background: #fff; border: 1px solid var(--accent-line);
+  border-radius: 12px; padding: 14px 16px; }
+#responsible .r-take .owl-mark { width: 34px; height: 46px; flex: none; }
+#responsible .r-take strong { display: block; font-size: 14.5px; color: var(--ink); }
+#responsible .r-take span { font-size: 12.5px; color: var(--muted); }
+#responsible .r-note { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+#responsible .r-w22 { width: 22%; }
+#responsible .r-w24 { width: 24%; }
+#responsible .r-w14 { width: 14%; }
+#responsible .r-w17 { width: 17%; }
