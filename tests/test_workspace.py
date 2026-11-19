@@ -533,5 +533,6 @@ class DashboardHTTPTests(unittest.TestCase):
         self.assertFalse(any('\u4e00'<=c<='\u9fff' for c in section))
         for model in ('Sonnet 5.5','GPT-6.1 Terra','Opus 5.5','GPT-6.1 Sol','Fable 5.2'):self.assertIn(model,section)
         self.assertIn('Case Study 2',section)
+        for heading in ('Veracity index','Guardrails','Transparency &amp; evaluation','User feedback','edit rate'):self.assertIn(heading,section)
 
 if __name__=='__main__':unittest.main()
