@@ -44,3 +44,12 @@
 #responsible .r-w24 { width: 24%; }
 #responsible .r-w14 { width: 14%; }
 #responsible .r-w17 { width: 17%; }
+#responsible .r-also { margin-top: 14px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #3d4248; line-height: 1.5; }
+#responsible .r-also strong { color: var(--ink); }
+#responsible .r-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 16px; }
+#responsible .r-col { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+#responsible h4 { margin: 0 0 10px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+#responsible .r-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+#responsible .r-list li { font-size: 13px; color: #3d4248; line-height: 1.5; padding-left: 14px; border-left: 2px solid var(--accent-line); }
+#responsible .r-list strong { display: block; color: var(--ink); font-weight: 600; }
+#workspace-navigation a[href="#responsible"] { white-space: normal; }
