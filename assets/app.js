@@ -344,6 +344,7 @@ refreshJobs().catch(e=>notice(e.message,true));
   compose:['Confirm your email template','Adjust the wording. Each email is personalized for its creator.'],
   send:['Preview and send','Read each email, confirm, then send.'],
   history:['Delivery log','Keep track of deliveries, replies and campaign activity.'],
+  business:['Business and Customer','Who it\'s for, how we price, and how we compare.'],
   responsible:['Risks, Guardrails & Responsible AI','How the AI is tested, and the guardrails that keep it honest.'],
   settings:['Settings','Accounts, appearance and help.']
  };
