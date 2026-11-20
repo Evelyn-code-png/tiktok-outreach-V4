@@ -7,6 +7,7 @@
 1. 在 **Account Setup → Open and click tracking** 填写独立服务地址和访问令牌，点击 **Test connection and enable**。服务地址支持 Cloudflare `workers.dev` 或 `pages.dev` 的 HTTPS 地址。
 2. 通过本系统直接发送经过确认的邮件。程序先注册随机追踪编号，再提交邮件；注册失败会阻止该封邮件发送。
 3. 在 **Delivery log** 查看 Open rate 和 Click rate。点击 **Sync opens and clicks** 可立即同步；页面可见时每两分钟也会尝试同步。
+   新发送邮件的纯文本和 HTML 版本均使用追踪地址，显示的网址与实际链接地址一致。收件人复制该地址到浏览器打开，也可以记录点击。此修复不会改变已经发出的邮件中的原始链接。
 4. **Pause new tracking** 停止添加新的追踪标记并暂停同步，已保存的记录保留。重新启用后可以继续同步。
 
 启用前的邮件、Gmail 网页发送的邮件不含此追踪标记，不能补追踪。分母只包括具有追踪编号且已被发送服务接受的新邮件；没有符合条件的邮件时显示 **No tracked sends**。回复率继续使用原有的回复追踪逻辑。

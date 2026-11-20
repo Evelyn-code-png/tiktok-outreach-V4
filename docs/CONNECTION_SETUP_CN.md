@@ -34,7 +34,7 @@ Gmail API 发信记录使用 `accepted_by_gmail_api`。它只表示 Gmail 接受
 
 配置后运行 `python3 scripts/ai_gateway.py`。服务仅监听 `127.0.0.1`，必须由反向代理提供 HTTPS；代理应限制请求体、连接数和超时。不直接对公网暴露 Python HTTP 服务。成员填写的 URL 为 HTTPS 服务根地址，例如 `https://ai.example.com`，客户端会请求 `/v1/responses`。
 
-Account Setup 中填写 **Team AI service URL** 和 **Team access code**，保存后两个 AI 功能都会走团队服务。也可通过成员机器的 `OUTREACH_AI_URL`、`OUTREACH_AI_TOKEN` 环境变量配置。清空团队 URL 切回个人 key 模式（环境变量优先时需先移除环境变量）。换 URL 会清除旧访问码，避免发给新服务。
+Settings → **AI connection** 中选择 **Team AI**，填写团队服务地址和访问码后保存。选择 **My OpenAI API key** 可填写自己的 OpenAI API key 和可用模型；显式选择个人模式后，即使保留了团队地址或团队环境变量，也直接使用个人连接。两个 AI 功能都使用所选连接。**Save and test 3 options** 使用虚构内容验证三个选项的生成，可能消耗少量 AI API 额度，不查询 EasyKOL，也不发邮件。保存设置本身不会调用 AI。换团队 URL 会清除旧访问码，避免发给新服务。
 
 网关验证访问码、限制单次请求为 100 KB、固定服务端模型、将最大输出设为 2000 tokens，禁用响应存储，不接受工具调用或其他任意 Responses 参数。请求计入额度后，即使上游失败也不退回次数，避免并发或重试绕过限制。额度是请求数而不是美元硬预算；团队还应设置服务商预算提醒并监控实际花费。访问码轮换会产生新额度身份。
 
