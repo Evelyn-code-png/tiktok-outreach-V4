@@ -535,4 +535,19 @@ class DashboardHTTPTests(unittest.TestCase):
         self.assertIn('Case Study 2',section)
         for heading in ('Veracity index','Guardrails','Transparency &amp; evaluation','User feedback','edit rate'):self.assertIn(heading,section)
 
+    def test_business_page_is_served_linked_and_inline_style_free(self):
+        for path,mime in [('/business.js','text/javascript'),('/business.css','text/css')]:
+            with self.request(path) as r:
+                self.assertIn(mime,r.headers['Content-Type'])
+                self.assertTrue(r.read().decode())
+        with self.request('/') as r:
+            html=r.read().decode()
+        self.assertIn('/business.js',html);self.assertIn('/business.css',html)
+        self.assertIn('href="#business"',html)
+        self.assertLess(html.index('href="#business"'),html.index('href="#responsible"'))
+        start=html.index('<section hidden id="business">');section=html[start:html.index('</section>',start)]
+        self.assertNotIn('style=',section)
+        self.assertFalse(any('\u4e00'<=c<='\u9fff' for c in section))
+        for text in ('Business and Customer','Customers and pains','Three pain points','Our final price','Outreach V4 (ours)','Appendix'):self.assertIn(text,section)
+
 if __name__=='__main__':unittest.main()

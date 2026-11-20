@@ -99,7 +99,7 @@ class Handler(BaseHTTPRequestHandler):
                             o.record_tracking(cid,m['to'],'click'); self.send_response(302);self.send_header('Location',target);self.end_headers();return
                 except Exception: pass
             return self.respond(404,{'error':'tracking link invalid'})
-        if path in ('/glass.css', '/engagement.js', '/engagement.css', '/send-feedback.js', '/reply-sync.js', '/cloud-tracking.js', '/guided.js', '/guided.css', '/lively.css', '/outfits.js', '/outfits.css', '/pet-toggle.js', '/pet-toggle.css', '/responsible.js', '/responsible.css'):
+        if path in ('/glass.css', '/engagement.js', '/engagement.css', '/send-feedback.js', '/reply-sync.js', '/cloud-tracking.js', '/guided.js', '/guided.css', '/lively.css', '/outfits.js', '/outfits.css', '/pet-toggle.js', '/pet-toggle.css', '/responsible.js', '/responsible.css', '/business.js', '/business.css'):
             mime = 'text/javascript; charset=utf-8' if path.endswith('.js') else 'text/css; charset=utf-8'
             return self.respond(200, (ASSETS / path[1:]).read_bytes(), mime)
         if path in ('/', '/app.js', '/app.css', '/after-state.js', '/team-meeting-collaboration.svg', '/owl.svg', '/single-user-workspace.png',
