@@ -25,6 +25,7 @@ import reply_sync
 import cloud_tracking
 import google_mail
 import ai_connection
+import personalization
 import html
 
 ASSETS = Path(__file__).resolve().parents[1] / 'assets'
@@ -127,7 +128,9 @@ class Handler(BaseHTTPRequestHandler):
             result['easykol_email'] = o.load_config().get('easykol_email', '')
             result['tracking_configured'] = cloud_tracking.configured()
             result['ai_configured'] = all(ai_connection.configuration()[:2])
-            result['ai_mode'] = 'team' if ai_connection.configuration()[1] == 'team-managed' else 'personal'
+            result['ai_mode'] = ai_connection.mode()
+            result['openai_model'] = os.environ.get('OPENAI_MODEL') or o.load_config().get('openai_model', '')
+            result['personal_ai_key_saved'] = bool(os.environ.get('OPENAI_API_KEY') or o.load_config().get('openai_key'))
             result['google'] = google_mail.status()
             result['ai_gateway_url'] = o.load_config().get('ai_gateway_url','')
             return self.respond(200, result)
@@ -205,8 +208,16 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/mail/sync': return self.respond(202, reply_sync.start_sync())
             if path == '/api/tracking/config': return self.respond(200, cloud_tracking.configure(data))
             if path == '/api/tracking/sync': return self.respond(200, cloud_tracking.sync())
+            if path == '/api/ai/test':
+                result = personalization.call_ai(
+                    {'name': 'Sample Creator', 'profile_url': 'https://www.tiktok.com/@sample',
+                     'description': 'Shares practical home organization tips. This is fictional sample data.'}, [],
+                    {'brand_name': 'Sample Brand', 'product': 'Reusable storage boxes',
+                     'campaign_goal': 'Invite the creator to discuss a collaboration', 'offer': 'Product sample', 'language': 'English'})
+                return self.respond(200, {'message': 'AI connected — generated 3 sample opening options. No email was sent.',
+                                          'options': result['options']})
             if path == '/api/config':
-                if any(k in data and not isinstance(data[k], str) for k in ('sender', 'easykol_email', 'easykol_key', 'gmail_app_password','tracking_base_url','openai_key','openai_model','ai_gateway_url','ai_gateway_token')):
+                if any(k in data and not isinstance(data[k], str) for k in ('sender', 'easykol_email', 'easykol_key', 'gmail_app_password','tracking_base_url','openai_key','openai_model','ai_gateway_url','ai_gateway_token','ai_mode')):
                     raise ValueError('Configuration fields must be text')
                 with LOCK:
                     cfg = o.load_config()
@@ -237,6 +248,15 @@ class Handler(BaseHTTPRequestHandler):
                         if url != cfg.get('ai_gateway_url', ''): cfg.pop('ai_gateway_token', None)
                         cfg['ai_gateway_url'] = url
                     if data.get('ai_gateway_token', '').strip(): cfg['ai_gateway_token'] = data['ai_gateway_token'].strip()
+                    if 'ai_mode' in data:
+                        if data['ai_mode'] not in ('team', 'personal'): raise ValueError('Choose Team AI or My OpenAI API key.')
+                        cfg['ai_mode'] = data['ai_mode']
+                        if cfg['ai_mode'] == 'personal':
+                            if not (os.environ.get('OPENAI_API_KEY') or cfg.get('openai_key')): raise ValueError('Paste your OpenAI API key in AI connection.')
+                            if not (os.environ.get('OPENAI_MODEL') or cfg.get('openai_model')): raise ValueError('Enter an AI model available to your OpenAI API account.')
+                        elif not ((os.environ.get('OUTREACH_AI_URL') or cfg.get('ai_gateway_url')) and
+                                  (os.environ.get('OUTREACH_AI_TOKEN') or cfg.get('ai_gateway_token'))):
+                            raise ValueError('Enter the team AI service URL and access code, or choose My OpenAI API key.')
                     base_url=data.get('tracking_base_url','').strip()
                     if base_url:
                         if not base_url.startswith('https://') or len(base_url)>500: raise ValueError('Tracking URL must use HTTPS')

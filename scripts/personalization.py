@@ -123,11 +123,17 @@ def fetch_kol_details(profile_url):
 
 
 def _response_text(result):
+    if not isinstance(result, dict):
+        raise ValueError('The AI service returned an invalid response')
+    if result.get('status') == 'incomplete':
+        raise ValueError('The AI response stopped before all three options were ready. Try again or select another AI model in Settings.')
     pieces = []
     for item in result.get('output', []):
         if item.get('type') != 'message':
             continue
         for part in item.get('content', []):
+            if part.get('type') == 'refusal':
+                raise ValueError('The AI declined this request. Review the supplied content before trying again.')
             if part.get('type') == 'output_text':
                 pieces.append(part.get('text', ''))
     text = ''.join(pieces).strip()
@@ -177,21 +183,19 @@ def call_ai(creator, videos, brand):
         with urllib.request.urlopen(request, timeout=60) as response:
             result = json.load(response)
     except urllib.error.HTTPError as error:
-        if error.code in (401, 403):
-            raise ValueError('The AI API key is invalid or lacks permission') from None
-        if error.code == 429:
-            raise ValueError('The AI account has insufficient credits or is being rate-limited; try again later') from None
-        raise ValueError('The AI service could not generate copy at this time') from None
+        raise ai_connection.http_error(error) from None
     except (urllib.error.URLError, TimeoutError):
         raise ValueError('The AI service could not be reached; check the network and try again') from None
     try:
         output = json.loads(_response_text(result))
     except (json.JSONDecodeError, TypeError, KeyError):
         raise ValueError('The AI response format was invalid; try again') from None
-    if not isinstance(output.get('options'), list) or len(output['options']) != 3:
+    if not isinstance(output, dict) or not isinstance(output.get('options'), list) or len(output['options']) != 3:
         raise ValueError('The AI service did not return three opening options')
     allowed = {creator.get('profile_url')} | {video['url'] for video in videos}
     for option in output['options']:
+        if not isinstance(option, dict) or any(not isinstance(option.get(k), str) or not option[k].strip() for k in ('paragraph', 'reason', 'evidence_url')):
+            raise ValueError('The AI returned an incomplete opening option. Try generating again.')
         if option.get('evidence_url') not in allowed:
             raise ValueError('The AI cited information that was not provided, so the result was blocked')
     return output

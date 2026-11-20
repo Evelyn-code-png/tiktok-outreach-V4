@@ -113,7 +113,7 @@ def public_destination(value):
     return value
 
 
-def prepare(db, campaign, email, body):
+def prepare_message(db, campaign, email, body):
     if not configured():
         return None
     cfg = load()
@@ -123,29 +123,41 @@ def prepare(db, campaign, email, body):
     if previous and previous[1] != base:
         raise ValueError('This draft already belongs to a different tracking service. Make a new draft.')
     mid = previous[0] if previous else secrets.token_urlsafe(32)
-    links, pieces, offset = [], [], 0
+    links, pieces, plain, offset = [], [], [], 0
     for match in LINK.finditer(body):
         pieces.append(html.escape(body[offset:match.start()]))
+        plain.append(body[offset:match.start()])
         candidate = match.group().rstrip('.,;!?)')
         trailing = match.group()[len(candidate):]
         try:
             target = public_destination(candidate)
         except ValueError:
             pieces.append(html.escape(match.group()))
+            plain.append(match.group())
         else:
             if len(links) >= 50:
                 raise ValueError('Tracking supports up to 50 links per email')
             lid = secrets.token_urlsafe(32)
             links.append({'id': lid, 'target': target})
-            pieces.append('<a href="' + base + '/c/' + lid + '">' + html.escape(candidate) + '</a>' + html.escape(trailing))
+            tracked = base + '/c/' + lid
+            # The visible address must also be tracked: copying text bypasses href.
+            pieces.append('<a href="' + tracked + '" title="' + html.escape(target, quote=True) + '">' + tracked + '</a>' + html.escape(trailing))
+            plain.append(tracked + trailing)
         offset = match.end()
     pieces.append(html.escape(body[offset:]))
+    plain.append(body[offset:])
     result = request('/v1/register', {'id': mid, 'links': links}, cfg)
     if result.get('id') != mid:
         raise ValueError('Tracking registration was not confirmed; no email was sent')
     db.execute('INSERT OR IGNORE INTO cloud_tracking_messages(campaign,email,id,origin) VALUES(?,?,?,?)',
                (campaign, email, mid, base))
-    return '<html><body>' + ''.join(pieces).replace('\n', '<br>') + '<img src="' + base + '/o/' + mid + '.gif" width="1" height="1" alt=""></body></html>'
+    return {'text': ''.join(plain), 'html': '<html><body>' + ''.join(pieces).replace('\n', '<br>') + '<img src="' + base + '/o/' + mid + '.gif" width="1" height="1" alt=""></body></html>'}
+
+
+def prepare(db, campaign, email, body):
+    """Keep the HTML-only interface for existing callers."""
+    message = prepare_message(db, campaign, email, body)
+    return message['html'] if message else None
 
 
 def sync():

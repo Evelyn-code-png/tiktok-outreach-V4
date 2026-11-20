@@ -153,9 +153,7 @@ def call_model(creator, brand):
         with urllib.request.urlopen(request, timeout=60) as response:
             output = json.loads(p._response_text(json.load(response)))
     except urllib.error.HTTPError as error:
-        if error.code in (401, 403): raise ValueError('The AI key or model access is invalid. Check Account Setup.') from None
-        if error.code == 429: raise ValueError('The AI service is rate-limited or out of credits. Try again later.') from None
-        raise ValueError('The AI service could not generate a creator fit. Try again later.') from None
+        raise ai_connection.http_error(error) from None
     except (urllib.error.URLError, TimeoutError):
         raise ValueError('The AI service could not be reached. Try again later.') from None
     except (ValueError, TypeError, KeyError):

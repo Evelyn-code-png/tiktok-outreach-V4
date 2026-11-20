@@ -455,14 +455,17 @@ def send(args):
             msg['Date'], msg['Message-ID'] = formatdate(localtime=True), make_msgid(domain=sender.split('@')[1])
             msg.set_content(item['body'])
             import cloud_tracking
-            cloud_html = cloud_tracking.prepare(db, campaign['id'], email, item['body'])
+            cloud_message = cloud_tracking.prepare_message(db, campaign['id'], email, item['body'])
             tracking_base = cfg.get('tracking_base_url','').rstrip('/')
-            if cloud_html:
-                msg.add_alternative(cloud_html, subtype='html')
+            if cloud_message:
+                msg.set_content(cloud_message['text'])
+                msg.add_alternative(cloud_message['html'], subtype='html')
             elif tracking_base:
                 pixel = tracking_base + '/t/open/' + campaign['id'] + '/' + tracking_token(campaign['id'], email) + '.gif'
-                safe_body = html.escape(item['body']).replace('\n','<br>')
-                safe_body = re.sub(r'https?://[^\s<]+', lambda m:'<a href="'+html.escape(tracked_url(campaign['id'],email,m.group(0)),quote=True)+'">'+html.escape(m.group(0))+'</a>', safe_body)
+                tracked_body = re.sub(r'https?://[^\s<>"\x00-\x1f]+', lambda m: tracked_url(campaign['id'], email, m.group(0)), item['body'])
+                msg.set_content(tracked_body)
+                safe_body = html.escape(tracked_body).replace('\n','<br>')
+                safe_body = re.sub(r'https?://[^\s<]+', lambda m:'<a href="'+m.group(0)+'">'+m.group(0)+'</a>', safe_body)
                 msg.add_alternative('<html><body>'+safe_body+'<img src="'+html.escape(pixel, quote=True)+'" width="1" height="1" alt=""></body></html>', subtype='html')
             db.execute('INSERT INTO deliveries VALUES (?,?,?,?,?)', (campaign['id'], email, 'sending', msg['Message-ID'], time.time()))
             db.commit()
