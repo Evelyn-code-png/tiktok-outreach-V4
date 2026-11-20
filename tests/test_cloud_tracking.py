@@ -1,5 +1,7 @@
 import hashlib
+import html
 import json
+import re
 from pathlib import Path
 import secrets
 import sys
@@ -7,6 +9,8 @@ import tempfile
 from types import SimpleNamespace as NS
 import unittest
 from unittest.mock import patch
+from html.parser import HTMLParser
+from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import cloud_tracking as t
@@ -64,6 +68,62 @@ class CloudTrackingTests(unittest.TestCase):
         self.assertNotIn('token', state)
         self.assertEqual((self.root / 'cloud-tracking.json').stat().st_mode & 0o777, 0o600)
         self.assertEqual(before, (self.root / 'config.json').read_bytes())
+
+    def test_sent_plain_text_and_visible_html_share_the_registered_links(self):
+        body = 'Hello & welcome.\nhttps://example.com/product?a=1&b=2.\nhttps://example.org/offer\nThanks!'
+        campaign = {'sender': 'me@example.com', 'messages': [
+            {'to': 'jane@example.com', 'subject': 'Collaboration', 'body': body}]}
+        campaign['id'] = t.o.campaign_hash(campaign)
+        path = self.root / 'campaign.json'; t.o.save_json(path, campaign)
+        args = NS(campaign=str(path), execute=True, campaign_id=campaign['id'], max_messages=1, delay=1)
+        class Links(HTMLParser):
+            def __init__(self):
+                super().__init__(); self.hrefs = []; self.labels = []; self.in_link = False
+            def handle_starttag(self, tag, attrs):
+                if tag == 'a': self.hrefs.append(dict(attrs)['href']); self.in_link = True
+            def handle_endtag(self, tag):
+                if tag == 'a': self.in_link = False
+            def handle_data(self, data):
+                if self.in_link: self.labels.append(data)
+        with patch.object(t, 'request', side_effect=lambda path, data, cfg: {'id': data['id']}) as register, patch.object(t.o.smtplib, 'SMTP_SSL') as smtp:
+            transport = smtp.return_value.__enter__.return_value
+            transport.send_message.return_value = {}
+            self.assertEqual(t.o.send(args)['accepted'], 1)
+            message = transport.send_message.call_args.args[0]
+        registered = register.call_args.args[1]['links']
+        expected = [t.load()['origin'] + '/c/' + item['id'] for item in registered]
+        plain = message.get_body(preferencelist=('plain',)).get_content()
+        markup = message.get_body(preferencelist=('html',)).get_content()
+        parsed = Links(); parsed.feed(markup)
+        self.assertEqual(parsed.hrefs, expected)
+        self.assertEqual(parsed.labels, expected)
+        for link in expected: self.assertIn(link, plain)
+        self.assertNotIn('https://example.com/product', plain)
+        self.assertIn(expected[0] + '.', plain)
+        self.assertIn('Hello & welcome.', plain)
+        self.assertIn('/o/', markup)
+        self.assertEqual(json.loads(path.read_text())['messages'][0]['body'], body)
+        register.assert_called_once()
+
+    def test_legacy_tracking_also_rewrites_plain_text_and_visible_links(self):
+        t.configure({'enabled': False})
+        config = t.o.load_config(); config['tracking_base_url'] = 'https://legacy.example.com'
+        t.o.save_json(self.root / 'config.json', config)
+        campaign = {'sender': 'me@example.com', 'messages': [
+            {'to': 'jane@example.com', 'subject': 'Hello', 'body': 'See https://example.com/?a=1&b=2'}]}
+        campaign['id'] = t.o.campaign_hash(campaign)
+        path = self.root / 'campaign.json'; t.o.save_json(path, campaign)
+        with patch.object(t.o.smtplib, 'SMTP_SSL') as smtp:
+            transport = smtp.return_value.__enter__.return_value
+            transport.send_message.return_value = {}
+            t.o.send(NS(campaign=str(path), execute=True, campaign_id=campaign['id'], max_messages=1, delay=1))
+            message = transport.send_message.call_args.args[0]
+        self.assertIn('https://legacy.example.com/t/click/', message.get_body(preferencelist=('plain',)).get_content())
+        markup = message.get_body(preferencelist=('html',)).get_content()
+        href = html.unescape(re.search(r'href="([^"]+)"', markup)[1])
+        self.assertIn(href, message.get_body(preferencelist=('plain',)).get_content())
+        self.assertEqual(parse_qs(urlsplit(href).query)['url'], ['https://example.com/?a=1&b=2'])
+        self.assertIn('>https://legacy.example.com/t/click/', markup)
 
     def delivered(self, mid=None):
         mid = mid or secrets.token_urlsafe(32)

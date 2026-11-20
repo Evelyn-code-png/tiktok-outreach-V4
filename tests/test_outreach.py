@@ -18,6 +18,8 @@ class WorkflowTests(unittest.TestCase):
         self.home = patch.object(o, 'ROOT', self.root / 'private')
         self.home.start()
         o.private_dir()
+        tracker = patch('cloud_tracking.o.ROOT', o.ROOT)
+        tracker.start(); self.addCleanup(tracker.stop)
         o.save_json(o.ROOT / 'config.json', {'sender': 'sender@example.com', 'gmail_app_password': 'mock-password'})
 
     def tearDown(self):
