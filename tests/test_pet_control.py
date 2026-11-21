@@ -63,6 +63,11 @@ class PetControlTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Tkinter'):
                 pc.control({'action': 'start'})
 
+    def test_owl_is_offered_on_windows_and_macos_only(self):
+        for os_name, platform, expected in [('nt', 'win32', True), ('posix', 'darwin', True), ('posix', 'linux', False)]:
+            with patch.object(pc.os, 'name', os_name), patch.object(pc.sys, 'platform', platform):
+                self.assertEqual(pc.control({'action': 'status'})['supported'], expected, platform)
+
     def test_launch_runs_the_pet_script_detached(self):
         with patch.object(pc.subprocess, 'Popen') as popen:
             pc.launch()

@@ -41,6 +41,30 @@ class OwlPetTests(unittest.TestCase):
         self.assertIsNone(self.pet.running_dashboard_url())
 
 
+    def test_mac_sprites_make_only_the_key_color_transparent(self):
+        import struct, zlib
+        for outfit, _ in self.pet.OUTFITS:
+            path = self.pet.SPRITES / f'owl-{outfit}@7.png'
+            data = self.pet.png_with_transparent_key(path)
+            chunks, pos = {}, 8
+            while pos < len(data):
+                length, kind = struct.unpack('>I4s', data[pos:pos + 8])
+                body = data[pos + 8:pos + 8 + length]
+                crc, = struct.unpack('>I', data[pos + 8 + length:pos + 12 + length])
+                self.assertEqual(crc, zlib.crc32(kind + body) & 0xffffffff)
+                chunks.setdefault(kind, body); pos += 12 + length
+            palette, alpha = chunks[b'PLTE'], chunks[b'tRNS']
+            for i, a in enumerate(alpha):
+                is_key = palette[3 * i:3 * i + 3] == bytes([255, 0, 254])
+                self.assertEqual(a, 0 if is_key else 255, (outfit, i))
+            self.assertIn(0, alpha)
+            self.assertEqual(self.pet.png_with_transparent_key(path)[:8], path.read_bytes()[:8])
+
+    def test_mac_work_area_avoids_menu_bar_and_dock(self):
+        left, top, right, bottom = self.pet.mac_work_area(1440, 900)
+        self.assertEqual((left, right), (0, 1440))
+        self.assertGreater(top, 0); self.assertLess(bottom, 900)
+
     def test_workspace_can_ping_and_close_the_owl(self):
         self.pet.QUIT_REQUESTED.clear()
         self.assertEqual(self.pet.handle_command('ping\n'), b'owl')
