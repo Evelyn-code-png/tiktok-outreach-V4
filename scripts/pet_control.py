@@ -54,7 +54,7 @@ def control(data):
     action = data.get('action')
     if action not in ('status', 'start', 'stop'):
         raise ValueError('Choose status, start or stop for the desktop owl.')
-    supported = os.name == 'nt'
+    supported = os.name == 'nt' or sys.platform == 'darwin'
     if action == 'start' and not running():
         if not PET.exists():
             raise ValueError('The desktop owl is not installed in this copy of the app.')
@@ -64,7 +64,7 @@ def control(data):
             if running():
                 break
         else:
-            raise ValueError('The desktop owl did not start. It needs Python with Tkinter (included in the Windows installer).')
+            raise ValueError('The desktop owl did not start. It needs Python with Tkinter (included in the python.org installer).')
     if action == 'stop' and running():
         send('quit')
         for _ in range(20):

@@ -61,7 +61,7 @@
     const hint = document.createElement('p'); hint.className = 'hint';
     hint.textContent = 'A small owl peeks out from the edge of your screen. Click it to come back to Outreach. Tip: double-click any owl on this page to turn it on.';
     const note = document.createElement('p'); note.id = 'pet-toggle-note'; note.className = 'hint'; note.hidden = true;
-    note.textContent = 'The desktop owl runs on Windows.';
+    note.textContent = 'The desktop owl runs on Windows and macOS.';
     text.append(title, hint, note);
     const toggle = document.createElement('button');
     toggle.type = 'button'; toggle.id = 'pet-toggle'; toggle.className = 'pet-switch';
@@ -82,7 +82,7 @@
     if (!owl || owl.closest('.outfit-option')) return;
     event.preventDefault();
     window.getSelection?.()?.removeAllRanges();
-    if (!state.supported) { toast('The desktop owl runs on Windows.'); return; }
+    if (!state.supported) { toast('The desktop owl runs on Windows and macOS.'); return; }
     setPet(true);
   });
 

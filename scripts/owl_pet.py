@@ -4,25 +4,28 @@ The owl hides at the side of the screen with only its head peeking out. Click it
 opens the Outreach workspace in your browser (starting the local dashboard if it is not running yet).
 Drag it anywhere; drop it near the left or right edge and it hides there again. Right-click for options.
 
-Start it with "Owl Pet.bat" (Windows) or: python scripts/owl_pet.py
+Start it with "Owl Pet.bat" (Windows), "Owl Pet.command" (macOS) or: python scripts/owl_pet.py
 """
+import base64
 import json
 import math
 import os
 import random
 import socket
+import struct
 import subprocess
 import sys
 import threading
 import urllib.request
 import webbrowser
+import zlib
 from pathlib import Path
 from urllib.parse import urlparse
 
 try:
     import tkinter as tk
 except ImportError:  # pragma: no cover - only on Python builds without Tk
-    print('The owl pet needs Tkinter, which is included with the standard Python installer for Windows.')
+    print('The owl pet needs Tkinter, which is included with the standard Python installer from python.org.')
     raise SystemExit(1)
 
 HERE = Path(__file__).resolve().parent
@@ -35,6 +38,8 @@ SESSION = HOME / 'dashboard-session.json'
 LOCK_PORT = 8799
 
 KEY = '#ff00fe'  # transparent color used in the sprite sheets
+MAC = sys.platform == 'darwin'
+LAUNCHER = 'Open Dashboard.command' if MAC else 'Open Dashboard.bat'
 THEMES = ['forest', 'indigo', 'ocean', 'plum', 'coral', 'graphite']
 OUTFITS = [('classic', 'Classic'), ('headphones', 'Headphones'), ('beret', 'Beret'), ('bowtie', 'Bow tie'),
            ('scarf', 'Striped scarf'), ('gradcap', 'Grad cap'), ('reindeer', 'Reindeer'), ('holiday-scarf', 'Christmas scarf')]
@@ -87,6 +92,37 @@ def running_dashboard_url():
         return None
 
 
+def png_with_transparent_key(path, key=(255, 0, 254)):
+    """Return the PNG bytes with the key color made fully transparent (macOS has no transparent-color window).
+
+    The sprite sheets are palette PNGs, so this only adds a tRNS chunk that marks the key's palette
+    entry as transparent; the image data itself is untouched.
+    """
+    data = Path(path).read_bytes()
+    out, pos, done = [data[:8]], 8, False
+    while pos < len(data):
+        length, kind = struct.unpack('>I4s', data[pos:pos + 8])
+        chunk = data[pos:pos + 12 + length]
+        if kind == b'tRNS':
+            done = True
+        out.append(chunk)
+        if kind == b'PLTE' and not done:
+            palette = data[pos + 8:pos + 8 + length]
+            keys = [i for i in range(length // 3) if tuple(palette[3 * i:3 * i + 3]) == key]
+            if keys:
+                alpha = bytes(0 if i in keys else 255 for i in range(max(keys) + 1))
+                out.append(struct.pack('>I', len(alpha)) + b'tRNS' + alpha
+                           + struct.pack('>I', zlib.crc32(b'tRNS' + alpha) & 0xffffffff))
+                done = True
+        pos += 12 + length
+    return b''.join(out)
+
+
+def mac_work_area(width, height):
+    """Keep the owl clear of the menu bar at the top and, roughly, the Dock at the bottom."""
+    return 0, 28, width, height - 70
+
+
 def windows_setup():
     """Sharp sprites on high-DPI screens and the usable screen area (without the taskbar)."""
     if sys.platform != 'win32':
@@ -111,18 +147,26 @@ class OwlPet:
         self.root.title('Outreach owl')
         self.root.overrideredirect(True)
         self.root.attributes('-topmost', True)
-        self.root.configure(bg=KEY)
-        try:
-            self.root.attributes('-transparentcolor', KEY)
-        except tk.TclError:
-            pass  # only Windows supports a transparent color; elsewhere the owl shows on a colored square
+        self.bg = KEY
+        if MAC:
+            try:  # a see-through window; the sprites carry real transparency on macOS
+                self.root.attributes('-transparent', True)
+                self.bg = 'systemTransparent'
+            except tk.TclError:
+                pass
+        self.root.configure(bg=self.bg)
+        if not MAC:
+            try:
+                self.root.attributes('-transparentcolor', KEY)
+            except tk.TclError:
+                pass  # Windows supports a transparent color; on Linux the owl shows on a colored square
         sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        self.area = work_area or (0, 0, sw, sh)
+        self.area = work_area or (mac_work_area(sw, sh) if MAC else (0, 0, sw, sh))
         dpi_scale = self.root.winfo_fpixels('1i') / 96
         self.suffix = min(SCALES, key=lambda s: abs(s[1] - dpi_scale * PET_SIZE))[0]
 
         self.config = load_config()
-        self.label = tk.Label(self.root, bg=KEY, bd=0, highlightthickness=0, cursor='hand2')
+        self.label = tk.Label(self.root, bg=self.bg, bd=0, highlightthickness=0, cursor='hand2')
         self.label.pack()
         self.frames = {}
         self.load_frames()
@@ -151,6 +195,9 @@ class OwlPet:
         self.label.bind('<B1-Motion>', self.on_drag)
         self.label.bind('<ButtonRelease-1>', self.on_release)
         self.label.bind('<Button-3>', self.on_menu)
+        if MAC:  # right-click is Button-2 on macOS, and Control-click works as well
+            self.label.bind('<Button-2>', self.on_menu)
+            self.label.bind('<Control-Button-1>', self.on_menu)
         self.label.bind('<Enter>', lambda e: self.set_hover(True))
         self.label.bind('<Leave>', lambda e: self.set_hover(False))
         self.build_menu()
@@ -164,7 +211,10 @@ class OwlPet:
     # ---------- sprites ----------
     def load_frames(self):
         path = SPRITES / f"owl-{self.config['outfit']}@{self.suffix}.png"
-        sheet = tk.PhotoImage(file=str(path))
+        if MAC:
+            sheet = tk.PhotoImage(data=base64.b64encode(png_with_transparent_key(path)).decode('ascii'))
+        else:
+            sheet = tk.PhotoImage(file=str(path))
         self.w = sheet.width() // SHEET_COLUMNS
         self.h = sheet.height() // len(THEMES)
         row = THEMES.index(self.config['theme'])
@@ -361,14 +411,14 @@ class OwlPet:
             self.server = subprocess.Popen([python, str(DASHBOARD), '--reuse'], cwd=str(PROJECT),
                                            stdout=log, stderr=subprocess.STDOUT, creationflags=flags)
         except OSError:
-            self.root.after(0, lambda: self.say('I could not start Outreach. Open "Open Dashboard.bat" to see why.', 6000))
+            self.root.after(0, lambda: self.say(f'I could not start Outreach. Open "{LAUNCHER}" to see why.', 6000))
             return
         for _ in range(40):
             if self.server.poll() is not None: break
             if running_dashboard_url(): return  # the dashboard opens the browser itself
             threading.Event().wait(0.25)
         if self.server.poll() not in (None, 0):
-            self.root.after(0, lambda: self.say('Outreach stopped while starting. Open "Open Dashboard.bat" to see why.', 6000))
+            self.root.after(0, lambda: self.say(f'Outreach stopped while starting. Open "{LAUNCHER}" to see why.', 6000))
 
     # ---------- speech bubble ----------
     def say(self, text, ms):
